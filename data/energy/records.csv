@@ -1,0 +1,4 @@
+record_id,measured_depth_m,vertical_depth_m,water_depth_m,source
+WELL-T1,3434,3432,74,SYNTHETIC example - replace with Sodir records
+WELL-T2,3574,,70,SYNTHETIC example - vertical depth missing on purpose
+WELL-T3,2890,2875,112,SYNTHETIC example - replace with Sodir records

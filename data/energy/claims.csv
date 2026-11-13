@@ -1,0 +1,9 @@
+claim_id,claim,gold_verdict,trap_type,split,notes
+E01,WELL-T1 has a measured depth of 3434 m.,supported,,dev,
+E02,WELL-T1 has a vertical depth of 3434 m.,contradicted,depth_confusion,dev,3434 is the measured depth; vertical is 3432
+E03,The water depth at WELL-T1 is 74 m.,supported,,dev,
+E04,WELL-T2 has a vertical depth of 3574 m.,insufficient_evidence,missing_value,dev,vertical depth missing; 3574 is measured depth
+E05,The records show that WELL-T1 is safe to operate today.,insufficient_evidence,out_of_scope,dev,no safety assessment in records
+E06,WELL-T9 has a water depth of 80 m.,insufficient_evidence,not_in_data,dev,record absent
+E07,WELL-T2 has a measured depth of about 3570 m.,supported,approximate,dev,within 1%
+E08,The water depth at WELL-T1 is 74 feet.,contradicted,unit_trap,dev,74 ft = 22.6 m

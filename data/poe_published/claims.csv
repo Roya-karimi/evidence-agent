@@ -1,0 +1,33 @@
+claim_id,claim,gold_verdict,trap_type,split,notes,claim_type,record_ids,parent,allele,direction,value,alpha
+R01,rs576603 shows a parent-of-origin effect on standing height.,supported,,test,P_diff 3.86e-8,A,rs576603_standing_height,,,,,0.05
+R02,rs77708343 shows a genome-wide significant (P < 5e-8) parent-of-origin effect on basal metabolic rate.,insufficient_evidence,threshold,test,P_diff 7.53e-8 is above 5e-8,A,rs77708343_bmr,,,,,5e-8
+R03,rs4264135 shows a genome-wide significant (P < 5e-8) parent-of-origin effect on urate level.,insufficient_evidence,rounding,test,published P_diff 2.22e-7; recomputing from rounded estimates gives about 3e-8,A,rs4264135_urate_level,,,,,5e-8
+R04,rs80116540 shows a parent-of-origin effect on body fat percentage.,supported,,test,P_diff 2.06e-7,A,rs80116540_body_fat,,,,,0.05
+R05,rs80116540 shows a parent-of-origin effect on leg fat percentage.,insufficient_evidence,wrong_variant_trait,test,leg fat % is recorded only for rs3730173,A,,,,,,0.05
+R06,rs143840904 has a maternal-specific effect on standing height.,supported,,test,maternal -0.183 (P 9.1e-32); paternal P 0.14,B,rs143840904_standing_height,,,,,0.05
+R07,rs59228823 has a maternal-specific effect on platelet count.,supported,,test,maternal -0.092; paternal P 0.20,B,rs59228823_platelet_count,,,,,0.05
+R08,rs576603 has a maternal-specific effect on standing height.,contradicted,wrong_parent,test,paternal effect larger; difference significant,B,rs576603_standing_height,,,,,0.05
+R09,rs11100479 has a maternal-specific effect on telomere length.,contradicted,wrong_parent,test,paternal 0.079 vs maternal 0.022,B,rs11100479_telomere_length_ts_ratio,,,,,0.05
+R10,rs7705526 has a maternal-specific effect on telomere length.,supported,both_significant,test,maternal 0.106 > paternal 0.038 (both significant); difference significant,B,rs7705526_telomere_length_ts_ratio,,,,,0.05
+R11,rs11100479 has a paternal-specific effect on telomere length.,supported,,test,paternal 0.079 > maternal 0.022,C,rs11100479_telomere_length_ts_ratio,,,,,0.05
+R12,rs2293607 has a paternal-specific effect on telomere length.,supported,both_significant,test,paternal -0.122 vs maternal -0.068 (paper: paternal asymmetric),C,rs2293607_telomere_length_ts_ratio,,,,,0.05
+R13,rs2299620 has a paternal-specific effect on HbA1c.,contradicted,wrong_parent,test,maternal -0.129 > paternal -0.011,C,rs2299620_hba1c_level,,,,,0.05
+R14,The maternally inherited T allele of rs143840904 is associated with lower standing height.,supported,,test,maternal beta -0.183 for T,D,rs143840904_standing_height,maternal,T,-,,0.05
+R15,The paternally inherited T allele of rs143840904 is associated with lower standing height.,insufficient_evidence,single_effect_ns,test,paternal beta -0.023 (P 0.14),D,rs143840904_standing_height,paternal,T,-,,0.05
+R16,The paternally inherited A allele of rs10838787 is associated with higher type 2 diabetes risk.,supported,binary_trait,test,paternal log-odds 0.136 (P 3.9e-7),D,rs10838787_t2d,paternal,A,+,,0.05
+R17,The maternally inherited A allele of rs10838787 is associated with higher type 2 diabetes risk.,contradicted,opposite_direction,test,maternal log-odds -0.091 (P 7.6e-4),D,rs10838787_t2d,maternal,A,+,,0.05
+R18,The maternally inherited C allele of rs143840904 is associated with lower standing height.,insufficient_evidence,allele_not_recorded,test,effect allele is T; other allele not recorded,D,rs143840904_standing_height,maternal,C,-,,0.05
+R19,The maternally inherited G allele of rs6467315 is associated with smaller hip circumference.,supported,,test,maternal beta -0.042 for G,D,rs6467315_hip_circumference,maternal,G,-,,0.05
+R20,The maternal and paternal effects of rs576603 on standing height are equal.,contradicted,equivalence_claim,test,difference significant,E,rs576603_standing_height,,,,,0.05
+R21,rs6467315 has no parent-of-origin effect on BMI.,insufficient_evidence,not_in_records,test,no BMI record for rs6467315 (the paper reports infant BMI effects outside Table 1),E,,,,,,0.05
+R22,The maternal and paternal effects of rs77708343 on standing height go in opposite directions.,supported,,test,maternal +0.034 and paternal -0.055 both significant,F,rs77708343_standing_height,,,,,0.05
+R23,The maternal and paternal effects of rs2293607 on telomere length go in opposite directions.,contradicted,same_direction,test,both negative and significant,F,rs2293607_telomere_length_ts_ratio,,,,,0.05
+R24,The maternal and paternal effects of rs3847104 on hip circumference go in opposite directions.,insufficient_evidence,single_effect_ns,test,paternal P 0.10,F,rs3847104_hip_circumference,,,,,0.05
+R25,The maternal and paternal effects of rs4264135 on urate level go in opposite directions.,supported,label_mismatch,test,maternal +0.014 (P 0.033) and paternal -0.033 both significant; the paper classifies the pattern as paternal,F,rs4264135_urate_level,,,,,0.05
+R26,The paternal effect estimate of rs10838787 on HbA1c is 0.050.,supported,numeric,test,stored 0.050,G,rs10838787_hba1c_level,paternal,,,0.050,0.05
+R27,The maternal effect estimate of rs59228823 on platelet count is -0.029.,contradicted,numeric,test,stored -0.092,G,rs59228823_platelet_count,maternal,,,-0.029,0.05
+R28,The opposite parental effects of rs80116540 on arm fat percentage are caused by imprinting of GNAS.,insufficient_evidence,causal_overreach,test,records hold associations only,X,rs80116540_arm_fat,,,,,0.05
+R29,A variant near KLF14 has a maternal-specific effect on hip circumference.,supported,gene_level,test,rs6467315 and rs3847104 both maternal-specific,B,rs6467315_hip_circumference;rs3847104_hip_circumference,,,,,0.05
+R30,rs10838787 shows a parent-of-origin effect on glucose level.,insufficient_evidence,wrong_variant_trait,test,glucose is recorded only for rs4417225,A,,,,,,0.05
+R31,rs7188903 has a maternal-specific effect on IGF-1 level.,supported,,test,maternal 0.041; paternal P 0.10,B,rs7188903_igf1_level,,,,,0.05
+R32,rs12528876 shows a parent-of-origin effect on IGF-1 level at P < 1e-6.,insufficient_evidence,threshold,test,P_diff 2.96e-6,A,rs12528876_igf1_level,,,,,1e-6

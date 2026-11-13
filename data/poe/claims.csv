@@ -1,0 +1,21 @@
+claim_id,claim,gold_verdict,trap_type,split,notes,claim_type,record_ids,parent,allele,direction,value,alpha
+P01,LOCUS_A has a maternal-specific effect on BMI.,supported,,dev,difference z=3.54,B,LOCUS_A,,,,,0.05
+P02,LOCUS_B has a maternal-specific effect on BMI.,insufficient_evidence,one_side_significant,dev,maternal p=0.012 paternal p=0.35 but difference p=0.27,B,LOCUS_B,,,,,0.05
+P03,LOCUS_C has a maternal-specific effect on BMI.,contradicted,wrong_parent,dev,difference significant with paternal larger,B,LOCUS_C,,,,,0.05
+P04,The maternal and paternal effects of LOCUS_D on BMI differ.,insufficient_evidence,both_significant_no_difference,dev,difference p=0.81,A,LOCUS_D,,,,,0.05
+P05,The maternal and paternal effects of LOCUS_D on BMI are equal.,insufficient_evidence,equivalence_claim,dev,non-significant difference does not show equality,E,LOCUS_D,,,,,0.05
+P06,The maternal and paternal effects of LOCUS_E on BMI go in opposite directions.,supported,opposite_directions,dev,both significant with opposite signs,F,LOCUS_E,,,,,0.05
+P07,LOCUS_F has a maternal-specific effect on BMI.,supported,covariance,dev,significant only when the stored covariance is used (p=0.033 vs 0.099),B,LOCUS_F,,,,,0.05
+P08,The maternal and paternal effects of LOCUS_G on BMI differ.,insufficient_evidence,missing_value,dev,paternal estimate missing,A,LOCUS_G,,,,,0.05
+P09,LOCUS_Z has a maternal effect on BMI.,insufficient_evidence,not_in_data,dev,locus absent,D,,maternal,,+,,0.05
+P10,The maternally inherited allele at LOCUS_B is associated with higher BMI.,supported,single_effect,dev,maternal z=2.5,D,LOCUS_B,maternal,,+,,0.05
+P11,The paternally inherited allele at LOCUS_A is associated with higher BMI.,insufficient_evidence,single_effect_ns,dev,paternal z=0.33,D,LOCUS_A,paternal,,+,,0.05
+P12,The maternal-specific effect of LOCUS_A on BMI is caused by genomic imprinting.,insufficient_evidence,causal_overreach,dev,records hold associations only,X,LOCUS_A,,,,,0.05
+P13,The paternal effect estimate at LOCUS_C is 0.07.,supported,numeric,dev,stored 0.070,G,LOCUS_C,paternal,,,0.07,0.05
+P14,The maternal effect estimate at LOCUS_A is 0.12.,contradicted,numeric,dev,stored 0.080,G,LOCUS_A,maternal,,,0.12,0.05
+P15,LOCUS_C shows a parent-of-origin effect on BMI.,supported,general_poe,dev,difference z=-3.64,A,LOCUS_C,,,,,0.05
+P16,LOCUS_A shows a parent-of-origin effect on BMI.,supported,general_poe,heldout,difference significant,A,LOCUS_A,,,,,0.05
+P17,LOCUS_E shows a parent-of-origin effect on BMI.,supported,general_poe,heldout,difference significant; opposite signs,A,LOCUS_E,,,,,0.05
+P18,LOCUS_B shows a parent-of-origin effect on BMI.,insufficient_evidence,general_poe,heldout,difference p=0.27,A,LOCUS_B,,,,,0.05
+P19,LOCUS_C has a paternal-specific effect on BMI.,supported,paternal_specific,heldout,difference significant; paternal larger,C,LOCUS_C,,,,,0.05
+P20,LOCUS_A has a paternal-specific effect on BMI.,contradicted,paternal_specific,heldout,difference significant; maternal larger,C,LOCUS_A,,,,,0.05
