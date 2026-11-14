@@ -1,0 +1,4 @@
+# Three draft sentences about Table 1 of Hofmeister et al. (2025). One statement per line.
+rs4264135 shows a genome-wide significant parent-of-origin effect on urate level.
+The paternal effect estimate of rs576603 on standing height is -0.027.
+rs7705526 affects telomere length only when it is maternally inherited.

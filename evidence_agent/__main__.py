@@ -4,6 +4,7 @@
   python -m evidence_agent evaluate --domain poe --mode agent
   python -m evidence_agent evaluate --domain poe --mode no_tools
   python -m evidence_agent compare results/<run_1> results/<run_2>
+  python -m evidence_agent review --statements examples/statements.txt
 """
 
 import argparse
@@ -151,6 +152,38 @@ def cmd_evaluate(args, llm=None):
     return rows
 
 
+def cmd_review(args, llm=None):
+    from .review import load_review_domain, read_statements, review_statements, to_markdown, write_csv
+    domain = load_review_domain(args.records)
+    statements = read_statements(args.statements)
+    if not statements:
+        raise SystemExit(f"No statements found in {args.statements}")
+    llm = llm or make_llm()
+    out_dir = Path(args.out)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    manifest = run_manifest({**domain, "claims_path": Path(args.statements)}, "review", llm, len(statements))
+    rows = review_statements(statements, domain, llm)
+    table = to_markdown(rows, title=f"Statement review: {Path(args.statements).name} against {Path(args.records).name}")
+    (out_dir / "review.md").write_text(table, encoding="utf-8")
+    write_csv(rows, out_dir / "review.csv")
+    with open(out_dir / "traces.jsonl", "w", encoding="utf-8") as log:
+        for r in rows:
+            log.write(json.dumps({"number": r["number"], "statement": r["statement"], **r["result"]}) + "\n")
+    failed = sum(r["result"]["status"] != "ok" for r in rows)
+    manifest.update({
+        "finished_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "status": "complete" if not failed else "incomplete",
+        "statements_checked": len(rows) - failed, "statements_without_verdict": failed,
+        "seconds_model_calls": round(sum(r["result"]["seconds"] for r in rows), 1),
+        "models_returned": sorted({m for r in rows for m in r["result"].get("model_returned", [])}),
+    })
+    (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    print(table)
+    print(f"Saved review.md, review.csv, traces.jsonl and manifest.json to {out_dir}")
+    return rows
+
+
 def _read_runs(folder: str) -> list:
     path = Path(folder) / "runs.jsonl"
     with open(path, encoding="utf-8") as f:
@@ -186,6 +219,13 @@ def main():
     e.add_argument("--split", help="Only claims from this split (e.g. dev, heldout)")
     e.add_argument("--limit", type=int, help="Only the first N claims")
     e.set_defaults(func=cmd_evaluate)
+
+    r = sub.add_parser("review", help="Check draft statements against a results table")
+    r.add_argument("--statements", required=True, help="Text file with one statement per line")
+    r.add_argument("--records", default=str(ROOT / "data" / "poe_published" / "records.csv"),
+                   help="Results table (CSV). Default: the published Table 1 records")
+    r.add_argument("--out", default="review_output", help="Folder for the review table and traces")
+    r.set_defaults(func=cmd_review)
 
     k = sub.add_parser("compare", help="Paired comparison of two evaluation runs")
     k.add_argument("run_1", help="Results folder of the first run")

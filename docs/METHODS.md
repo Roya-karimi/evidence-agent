@@ -155,7 +155,7 @@ With 26 claims only large differences are detectable, so results are reported as
 
 Results: [RESULTS, Run 3](RESULTS.md#run-3-version-2-test-26-new-claims).
 
-**Correction: rules v2.1.** After Run 3, an external review showed that rule H was wrong for estimates with opposite signs (see "Magnitude claims" in §4). `data/poe_published_v2_1/` holds the corrected rules and labels:
+**Correction: rules v2.1.** After Run 3, a review showed that rule H was wrong for estimates with opposite signs (see "Magnitude claims" in §4). `data/poe_published_v2_1/` holds the corrected rules and labels:
 
 - Rule H returns `insufficient_evidence` when the two estimates have opposite signs.
 - The parent-specific rules (B, C) no longer use a magnitude comparison. A parent-specific claim is `contradicted` when the difference is significant and the other parent's effect is significant.
@@ -179,7 +179,19 @@ Results: [RESULTS, Run 3](RESULTS.md#run-3-version-2-test-26-new-claims).
 - **Shared records.** Several claims concern the same variant, so claims are not independent. `scripts/score_saved_runs.py` adds a bootstrap that resamples variants instead of claims. All intervals and tests are exploratory and describe this claim set only.
 - **Error severity.** The confusion matrix is read asymmetrically. Calling an unresolved claim `contradicted` (or `supported`) states something the records do not establish. That is more serious than returning `insufficient_evidence` for a claim that could have been decided.
 
-## 9. Reproducibility
+## 9. Review workflow
+
+`python -m evidence_agent review --statements <file> --records <table.csv>` runs each statement through the same agent loop and tools, with system v2 and the review rules, and writes a review table.
+
+- **Rules.** `data/review/rules.md` holds rules v2.1 with two changes from the author's review of the pilot labels. First, a sentence that states a significance level ("genome-wide significant") is a claim about the reported test, so it is `contradicted` when the p-value does not meet the level; this does not mean that there is no effect. Second, "parent-specific" wording says the other parent's effect is absent. It is `contradicted` when that effect is significant and otherwise `insufficient_evidence`, never `supported`, because a non-significant estimate does not show a zero effect. The earlier benchmarks keep the rules they were run with.
+
+- **Input.** The table needs the columns `locus_id`, `trait`, `beta_maternal`, `se_maternal`, `beta_paternal` and `se_paternal`. Optional columns are the p-values, the effect allele and the maternal–paternal covariance. The layout is that of `data/poe_published/records.csv`.
+- **Finding and explanation.** These come from the model's verdict.
+- **Source rows and values.** These are read from the table for the record IDs the verdict cites. The acceptance checks in §2 guarantee that those IDs were returned by a tool.
+- **Suggested action.** In review mode the verdict carries one extra field, `check_type`: quoted number, effect direction, significance, parental difference, interpretation or other. Python maps the verdict and this label to a fixed sentence, for example "Revise the significance wording. The reported p-value does not meet the stated threshold." The model does not write the action.
+- **Scope.** The checks cover quoted numbers, effect direction, stated significance thresholds and differences between the parental effects. Statements about mechanism or interpretation are returned as insufficient evidence and marked for human review.
+
+## 10. Reproducibility
 
 Every run is saved to `results/<domain>_<mode>_<system>_<timestamp>/`:
 - `runs.jsonl` holds, for each claim, the status, the model name, every tool call with its arguments and result, the verdict, tokens and latency. It is written claim by claim, so an interrupted run keeps what finished.

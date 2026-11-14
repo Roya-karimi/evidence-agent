@@ -43,10 +43,18 @@ then choose the verdict that matches that conclusion.
 """
 
 
+REVIEW_EXTRA = """
+The claim is a sentence from a researcher's draft. In submit_verdict, also set
+check_type to what the sentence is mainly about.
+"""
+
+
 def system_prompt(domain: dict, mode: str) -> str:
     text = BASE.format(rules=domain["rules"])
     if domain.get("system") == "v2":
         text += V2_EXTRA
+    if domain.get("review"):
+        text += REVIEW_EXTRA
     if mode == "agent":
         return text + AGENT_EXTRA
     if mode == "no_tools":

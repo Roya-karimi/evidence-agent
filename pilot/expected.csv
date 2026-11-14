@@ -1,0 +1,15 @@
+claim_id,claim,gold_verdict,has_problem,check_type,notes,claim_type,record_ids,parent,allele,direction,value,alpha
+S01,The paternal effect estimate of rs62471721 on triglyceride level was -0.032.,contradicted,yes,quoted_number,the stored estimate is -0.023,G,rs62471721_triglyceride_level,paternal,,,-0.032,0.05
+S02,The maternal effect estimate of rs59228823 on platelet count was -0.092.,supported,no,quoted_number,,G,rs59228823_platelet_count,maternal,,,-0.092,0.05
+S03,rs4417225 showed a parent-of-origin effect on HbA1c.,insufficient_evidence,yes,parental_difference,the table has rs4417225 for glucose only,A,,,,,,0.05
+S04,The effect of rs143840904 on standing height was specific to the maternally inherited allele.,insufficient_evidence,yes,parental_difference,the wording says the paternal effect is absent; a non-significant paternal estimate (P 0.137) does not show that,B3,rs143840904_standing_height,,,,,0.05
+S05,rs146982369 showed a genome-wide significant parent-of-origin effect on total protein level.,contradicted,yes,significance,the reported difference P 2.59e-06 does not meet 5e-8,S,rs146982369_total_protein_level,,,,,5e-8
+S06,The paternally inherited A allele of rs10838787 was associated with higher HbA1c.,supported,no,effect_direction,,D,rs10838787_hba1c_level,paternal,A,+,,0.05
+S07,The parent-of-origin effect of rs77708343 on standing height is caused by imprinting of IGF2.,insufficient_evidence,yes,interpretation,mechanism claim; the table holds association estimates only,X,rs77708343_standing_height,,,,,0.05
+S08,"For rs217215 and creatinine level, the maternal and paternal effects were in opposite directions.",supported,no,parental_difference,,F,rs217215_creatinine_level,,,,,0.05
+S09,The effect of rs2293607 on telomere length was paternal-specific.,contradicted,yes,parental_difference,the maternal effect is also significant,C3,rs2293607_telomere_length_ts_ratio,,,,,0.05
+S10,The maternally inherited G allele of rs6467315 was associated with larger hip circumference.,contradicted,yes,effect_direction,the maternal estimate for G is negative,D,rs6467315_hip_circumference,maternal,G,+,,0.05
+S11,rs170102 showed a genome-wide significant parent-of-origin effect on cystatin C level.,supported,no,significance,,S,rs170102_cystatin_c_level,,,,,5e-8
+S12,The maternally inherited T allele of rs7188903 was associated with lower IGF-1 level.,insufficient_evidence,yes,effect_direction,the effect allele is G; the other allele is not in the table,D,rs7188903_igf1_level,maternal,T,-,,0.05
+S13,The effect of rs11100479 on telomere length was larger when the allele was paternally inherited.,supported,no,parental_difference,,H,rs11100479_telomere_length_ts_ratio,paternal,,,,0.05
+S14,rs3730173 had the same effect on leg fat whether it was maternally or paternally inherited.,contradicted,yes,parental_difference,the difference is significant,E,rs3730173_leg_fat,,,,,0.05

@@ -1,0 +1,32 @@
+{
+  "started_utc": "2026-11-14T15:05:53+00:00",
+  "domain": "review",
+  "mode": "review",
+  "system": "v2",
+  "model_requested": "gpt-4.1-mini",
+  "model_settings": {
+    "temperature": 0.0,
+    "timeout_seconds": 60.0,
+    "max_retries": 2,
+    "max_output_tokens": 1000
+  },
+  "sha256": {
+    "rules": "d0504b3eaecc73d6c6f30d7e6be1ae531e7c064a00aeda805a3f3bbbe550c621",
+    "claims": "83dff1722dc63b077b9c1cd9e5e48b8e9855e9c660ae1fd437e4153fb26e665f",
+    "records": "916297007bcccb937898d98879583abbc0146168961855048c6a3670986b7da4",
+    "code": "184ae774456a05f02c4398d19a90d7702adce30c202ffe495d4b7dc5c59a2c77"
+  },
+  "git_commit": "5ef0b614601ffd09ed6dd8e33a418ee99561ea16",
+  "git_uncommitted_changes": true,
+  "python": "3.12.7",
+  "openai_package": "3.50.0",
+  "claims_requested": 3,
+  "status": "complete",
+  "finished_utc": "2026-11-14T15:06:05+00:00",
+  "statements_checked": 3,
+  "statements_without_verdict": 0,
+  "seconds_model_calls": 12.2,
+  "models_returned": [
+    "gpt-4.1-mini-2025-04-14"
+  ]
+}

@@ -79,7 +79,7 @@ def _submission_problems(arguments, submit, mode, alone, evidence_calls, seen, o
 def run_agent(claim: str, domain: dict, llm, mode: str = "agent", max_steps: int = 8) -> dict:
     tools = domain["tools"] if mode == "agent" else []
     registry = {t.name: t for t in tools}
-    submit = submit_verdict_tool(domain.get("system", "v1"))
+    submit = submit_verdict_tool(domain.get("system", "v1"), domain.get("review", False))
     schemas = [t.schema() for t in tools] + [submit.schema()]
 
     messages = [
@@ -89,9 +89,9 @@ def run_agent(claim: str, domain: dict, llm, mode: str = "agent", max_steps: int
     trace, usage, seconds = [], {"prompt_tokens": 0, "completion_tokens": 0}, 0.0
     seen, opened, evidence_calls, models = set(), set(), 0, set()
 
-    def finish(status, verdict=None, evidence_ids=(), explanation="", error=None, steps=max_steps):
+    def finish(status, verdict=None, evidence_ids=(), explanation="", error=None, steps=max_steps, check_type=None):
         return {"status": status, "verdict": verdict, "evidence_ids": list(evidence_ids),
-                "explanation": explanation, "error": error, "steps": steps,
+                "explanation": explanation, "check_type": check_type, "error": error, "steps": steps,
                 "tool_calls": sum(1 for t in trace if "tool" in t), "usage": usage,
                 "seconds": round(seconds, 2), "model_returned": sorted(models), "trace": trace}
 
@@ -124,7 +124,8 @@ def run_agent(claim: str, domain: dict, llm, mode: str = "agent", max_steps: int
                 if not problems:
                     trace.append(entry)
                     return finish("ok", call.arguments["verdict"], call.arguments["evidence_ids"],
-                                  call.arguments["explanation"], steps=step)
+                                  call.arguments["explanation"], steps=step,
+                                  check_type=call.arguments.get("check_type"))
                 result = {"error": "Submission rejected: " + "; ".join(problems)}
                 entry["rejected"] = problems
             elif call.name not in registry:

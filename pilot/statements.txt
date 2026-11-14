@@ -1,0 +1,14 @@
+The paternal effect estimate of rs62471721 on triglyceride level was -0.032.
+The maternal effect estimate of rs59228823 on platelet count was -0.092.
+rs4417225 showed a parent-of-origin effect on HbA1c.
+The effect of rs143840904 on standing height was specific to the maternally inherited allele.
+rs146982369 showed a genome-wide significant parent-of-origin effect on total protein level.
+The paternally inherited A allele of rs10838787 was associated with higher HbA1c.
+The parent-of-origin effect of rs77708343 on standing height is caused by imprinting of IGF2.
+For rs217215 and creatinine level, the maternal and paternal effects were in opposite directions.
+The effect of rs2293607 on telomere length was paternal-specific.
+The maternally inherited G allele of rs6467315 was associated with larger hip circumference.
+rs170102 showed a genome-wide significant parent-of-origin effect on cystatin C level.
+The maternally inherited T allele of rs7188903 was associated with lower IGF-1 level.
+The effect of rs11100479 on telomere length was larger when the allele was paternally inherited.
+rs3730173 had the same effect on leg fat whether it was maternally or paternally inherited.

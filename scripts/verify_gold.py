@@ -7,9 +7,10 @@ whose gold label disagrees.
 
 The parent-specific rules (B2, C2) and the magnitude rule (H) are the corrected
 version 2.1 rules. Types B and C are the version 1 rules exactly as given to the
-model in Run 2.
+model in Run 2. Types S, B3 and C3 belong to the review rules (data/review/rules.md).
 
 Run:  python scripts/verify_gold.py poe_published_v2_1
+      python scripts/verify_gold.py poe_published pilot/expected.csv
 """
 
 import csv
@@ -39,6 +40,13 @@ def verdict_for_record(rec_id, claim, tools, records):
 
     if t == "A":
         return S if diff_sig else I
+    if t == "S":                        # a stated significance level (review rules v3)
+        target = d if not claim["parent"] else d[claim["parent"]]
+        significant = target["difference_significant"] if not claim["parent"] else target["significant"]
+        return S if significant else C
+    if t in ("B3", "C3"):              # parent-specific wording is never supported (review rules v3)
+        other = p if t == "B3" else m
+        return C if diff_sig and other["significant"] else I
     if t in ("B2", "C2"):              # strict parent-specific (rules v2.1)
         own, other = (m, p) if t == "B2" else (p, m)
         if diff_sig and own["significant"] and not other["significant"]:
@@ -102,10 +110,11 @@ def verdict(claim, tools, records):
     return C if all(v == C for v in verdicts) else I
 
 
-def main(domain_name: str) -> int:
+def main(domain_name: str, claims_path=None) -> int:
+    """Check the claims of a domain, or of another claim file that uses the domain's records and rules."""
     domain = load_domain(domain_name)
     tools = {t.name: t.function for t in domain["tools"]}
-    with open(domain["claims_path"], newline="", encoding="utf-8") as f:
+    with open(claims_path or domain["claims_path"], newline="", encoding="utf-8") as f:
         claims = list(csv.DictReader(f))
     superseded = SUPERSEDED.get(domain_name, {})
     mismatches = old = 0
@@ -125,4 +134,4 @@ def main(domain_name: str) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1] if len(sys.argv) > 1 else "poe_published"))
+    sys.exit(main(sys.argv[1] if len(sys.argv) > 1 else "poe_published", sys.argv[2] if len(sys.argv) > 2 else None))

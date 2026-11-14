@@ -76,7 +76,7 @@ def test_evaluate_end_to_end_with_scripted_model(tmp_path):
     assert set(manifest["sha256"]) == {"rules", "claims", "records", "code"}
 
 
-# --- Regression tests for the external review of 13 November 2026 -------------------
+# --- Regression tests for the review of 13 November 2026 ----------------------------
 
 def test_verdict_without_evidence_lookup_is_rejected():
     """Review finding 2: an immediate verdict citing an invented source was accepted."""
@@ -374,3 +374,119 @@ def test_energy_claim_runs_end_to_end_through_compare_field():
     out = run_agent("The water depth at WELL-T1 is 74 feet.", domain, llm)
     assert out["status"] == "ok" and out["verdict"] == "contradicted"
     assert out["trace"][0]["result"]["matches"] is False and out["trace"][0]["result"]["claimed_in_m"] == 22.5552
+
+
+# --- Review workflow ----------------------------------------------------------------
+
+def _review_turns():
+    urate, height = "rs4264135_urate_level", "rs576603_standing_height"
+    return [
+        [("find_records", {"query": "rs4264135"})],
+        [("test_parental_difference", {"locus_id": urate, "alpha": 5e-8})],
+        [("submit_verdict", {"explanation": "Published P = 2.22e-07 | above 5e-8.", "evidence_ids": [urate],
+                             "check_type": "significance", "verdict": "insufficient_evidence"})],
+        [("get_estimates", {"locus_id": height})],
+        [("submit_verdict", {"explanation": "Stored value is -0.027.", "evidence_ids": [height],
+                             "check_type": "quoted_number", "verdict": "supported"})],
+        [("find_records", {"query": "rs999"})],
+        [("submit_verdict", {"explanation": "No record.", "evidence_ids": [],
+                             "check_type": "parental_difference", "verdict": "insufficient_evidence"})],
+        RuntimeError("connection lost"),
+    ]
+
+
+def test_review_command_writes_a_readable_table(tmp_path):
+    from evidence_agent.__main__ import cmd_review
+    from evidence_agent.domains import DATA
+    statements = tmp_path / "statements.txt"
+    statements.write_text("# draft sentences\n\nUrate is genome-wide significant.\nThe paternal estimate is -0.027.\n"
+                          "rs999 has an effect.\nA fourth sentence.\n", encoding="utf-8")
+    rows = cmd_review(Namespace(statements=str(statements), records=str(DATA / "poe_published" / "records.csv"),
+                                out=str(tmp_path / "out")), llm=ScriptedLLM(_review_turns()))
+    assert [r["finding"] for r in rows] == ["Insufficient evidence", "Supported", "Insufficient evidence", "Not checked"]
+    assert rows[0]["action"].startswith("Check the significance wording")
+    assert "difference P 2.22e-07" in rows[0]["source"] and "effect allele G" in rows[0]["source"]   # read from the table
+    assert rows[1]["action"] == "No change needed." and "paternal -0.027 (SE 0.004, P 8.53e-11)" in rows[1]["source"]
+    assert rows[2]["action"].startswith("No matching row") and rows[2]["source"] == "No source row used."
+    assert rows[3]["action"].startswith("The checker did not reach a verdict")
+    table = (tmp_path / "out" / "review.md").read_text(encoding="utf-8")
+    assert "4 statement(s) checked, 3 flagged" in table and "2.22e-07 \\| above" in table      # '|' escaped
+    assert len(table.splitlines()[5].split(" | ")) == 6
+    manifest = json.loads((tmp_path / "out" / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["status"] == "incomplete" and manifest["statements_without_verdict"] == 1
+    assert (tmp_path / "out" / "review.csv").exists() and (tmp_path / "out" / "traces.jsonl").exists()
+
+
+def test_review_requires_the_kind_of_check():
+    from evidence_agent.review import load_review_domain
+    from evidence_agent.domains import DATA
+    domain = load_review_domain(DATA / "poe_published" / "records.csv")
+    v2_style = {"explanation": "x", "evidence_ids": ["rs576603_standing_height"], "verdict": "supported"}
+    llm = ScriptedLLM([[("get_estimates", {"locus_id": "rs576603_standing_height"})], [("submit_verdict", v2_style)]])
+    out = run_agent("x", domain, llm, max_steps=2)
+    assert out["status"] == "no_valid_verdict" and "check_type" in out["trace"][-1]["rejected"][0]
+    assert "Hofmeister" not in domain["rules"] and "Type H" in domain["rules"] and "Type S" in domain["rules"]
+    assert "Never supported" in domain["rules"]
+
+
+def test_review_refuses_a_table_without_the_needed_columns(tmp_path):
+    from evidence_agent.review import load_review_domain
+    bad = tmp_path / "table.csv"
+    bad.write_text("locus_id,trait,beta_maternal\nx,y,0.1\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="se_maternal"):
+        load_review_domain(bad)
+
+
+def test_every_verdict_and_check_type_has_an_action():
+    from evidence_agent.review import action_for
+    from evidence_agent.tools import CHECK_TYPES, VERDICTS
+    records = {"r1": {}}
+    for verdict in VERDICTS:
+        for kind in CHECK_TYPES:
+            result = {"status": "ok", "verdict": verdict, "check_type": kind, "evidence_ids": ["r1"]}
+            assert action_for(result, records).endswith(".")
+    mechanism = {"status": "ok", "verdict": "insufficient_evidence", "check_type": "interpretation", "evidence_ids": []}
+    assert "human review" in action_for(mechanism, records)
+
+
+def test_pilot_labels_follow_the_review_rules_and_scoring_counts_correctly(tmp_path, capsys):
+    import csv
+    import importlib.util
+    import sys
+    from pathlib import Path
+    root = Path(__file__).resolve().parent.parent
+
+    def load(name):
+        spec = importlib.util.spec_from_file_location(name, root / "scripts" / f"{name}.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    assert load("verify_gold").main("poe_published", root / "pilot" / "expected.csv") == 0
+    with open(root / "pilot" / "expected.csv", newline="", encoding="utf-8") as f:
+        expected = list(csv.DictReader(f))
+    statements = (root / "pilot" / "statements.txt").read_text(encoding="utf-8").splitlines()
+    assert statements == [e["claim"] for e in expected]
+
+    # A made-up review: everything right, except S01 missed and S02 flagged with another variant's row.
+    review = tmp_path / "review.csv"
+    with open(review, "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(["number", "statement", "verdict", "check_type", "explanation", "evidence_ids", "source", "action",
+                    "status", "seconds"])
+        for i, e in enumerate(expected, 1):
+            verdict, ids = e["gold_verdict"], e["record_ids"]
+            if e["claim_id"] == "S01":
+                verdict = "supported"
+            if e["claim_id"] == "S02":
+                verdict, ids = "contradicted", "rs576603_standing_height"
+            w.writerow([i, e["claim"], verdict, "", "", ids, "", "", "ok", 2.0])
+    old_argv, sys.argv = sys.argv, ["score_pilot.py", str(review)]
+    try:
+        assert load("score_pilot").main() == 0
+    finally:
+        sys.argv = old_argv
+    out = capsys.readouterr().out
+    assert "| Problems caught | 8 / 9 |" in out and "| Problems missed | 1 / 9 |" in out
+    assert "| False alarms | 1 / 5 |" in out and "| Same finding as expected | 12 / 14 |" in out
+    assert "| Source row right | 13 / 14 |" in out and "| Time in model calls | 28 s |" in out

@@ -1,8 +1,35 @@
 # Results
 
-## Corrections after external review (14 November 2026)
+## Pilot of the review workflow (14 November 2026)
 
-The first public version (commit `6a79fb1`) was reviewed independently. The review reproduced every reported count from the saved traces, and found one error in a decision rule and several robustness gaps in the code ([CHANGELOG](CHANGELOG.md)).
+This is the only run of the corrected code with the model. It uses the `review` command, system v2 and the review rules (`data/review/rules.md`), with gpt-4.1-mini at temperature 0.
+
+- Sentences: 14, written for the pilot. 9 have a problem and 5 are sound ([pilot/README.md](../pilot/README.md)).
+- Expected findings: reviewed by the author before the run. The review changed two of them and the rules with them.
+- Outputs: `results/review_pilot_20261114/` and `results/review_examples_20261114/`.
+
+| Measure | Result |
+| --- | --- |
+| Problems caught (flagged) | 8 / 9 |
+| Problems missed | 1 / 9 |
+| False alarms | 0 / 5 |
+| Same finding as expected | 13 / 14 |
+| Source row right | 14 / 14 |
+| Time in model calls | 51 s |
+
+**The miss (S04).** "The effect of rs143840904 on standing height was specific to the maternally inherited allele." The maternal effect is significant, the paternal one is not (P = 0.137), and the difference is significant. The review rules say this wording is never `supported`, because a non-significant estimate does not show a zero effect. The model answered `supported` and wrote that the difference shows the effect "is specific to the maternally inherited allele". It did not apply the rule. This rule was added the same day, after the author's review, and has had no other test.
+
+**Other observations**
+
+- **An error in an explanation.** For the demo sentence about rs4264135 and urate, the finding was right (`contradicted`), but the explanation says that 2.22e-07 "is below the genome-wide significance threshold of 5e-08" before deferring to the tool's result. The comparison is made in Python, so the finding did not depend on that sentence. The explanation column can still be wrong and should be read as the model's account, not as a computed result.
+- **A generic action (S03).** The table holds rs4417225 for glucose, not HbA1c. The finding was right, but the model cited the glucose row, so the suggested action was "Soften the parent-of-origin wording" where "check the trait name" would have been more useful.
+- **Run 3, claim V03.** Under the review rules, a claim of genome-wide significance that the p-value does not meet is `contradicted`. That is what two Run 3 conditions answered for V03, and it was scored as an error under rules v2. Run 3 is not re-scored: its models were given rules v2.
+
+**Limits.** 14 sentences on the table the tool was developed with, one run, one reviewer of the expected findings. Reading time was not measured and there was no review by hand to compare with, so the pilot says nothing about time saved.
+
+## Corrections after review (14 November 2026)
+
+The first public version (commit `6a79fb1`) was reviewed after release. The review reproduced every reported count from the saved traces, and found one error in a decision rule and several robustness gaps in the code ([CHANGELOG](CHANGELOG.md)).
 
 Everything in this section comes from re-scoring the saved outputs with `python scripts/score_saved_runs.py`. No model was run again.
 

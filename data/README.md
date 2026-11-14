@@ -14,7 +14,8 @@ Each domain folder holds:
 | --- | --- | --- |
 | `poe_published` | 30 published estimates | Test benchmark (Run 2); rules fixed before any model run |
 | `poe_published_v2` | The same 30 records (read from `poe_published`) | 26 test claims and rules v2, as given to the model in Run 3. Kept unchanged. |
-| `poe_published_v2_1` | The same 30 records | Corrected rules v2.1 and labels: magnitude claims with opposite-sign estimates are `insufficient_evidence`; V05 relabelled. Use this version for new runs. |
+| `poe_published_v2_1` | The same 30 records | Corrected rules v2.1 and labels: magnitude claims with opposite-sign estimates are `insufficient_evidence`; V05 relabelled. |
+| `review` | No records of its own | Rules for the `review` command: v2.1 with two changes from the author's review (stated significance levels; parent-specific wording). See `pilot/README.md`. |
 | `poe` | Synthetic loci (`LOCUS_A` …) built to exercise each rule | Development benchmark |
 | `energy` | Synthetic wells (`WELL-T1` …) | Development benchmark |
 

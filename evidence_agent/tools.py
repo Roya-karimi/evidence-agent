@@ -131,7 +131,36 @@ SUBMIT_VERDICT_V2 = Tool(
 )
 
 
-def submit_verdict_tool(system: str = "v1") -> Tool:
+# Review mode: as v2, plus the kind of statement that was checked. Python turns the
+# verdict and this label into a suggested action; the model does not write the action.
+CHECK_TYPES = ["quoted_number", "effect_direction", "significance", "parental_difference", "interpretation", "other"]
+
+SUBMIT_VERDICT_REVIEW = Tool(
+    name="submit_verdict",
+    description=SUBMIT_VERDICT_V2.description,
+    parameters={
+        "type": "object",
+        "properties": {
+            "explanation": SUBMIT_VERDICT_V2.parameters["properties"]["explanation"],
+            "evidence_ids": SUBMIT_VERDICT_V2.parameters["properties"]["evidence_ids"],
+            "check_type": {
+                "type": "string", "enum": CHECK_TYPES,
+                "description": "What the statement is mainly about: a number quoted from the table; the direction "
+                               "of an effect; a significance claim or threshold; a difference between the maternal "
+                               "and paternal effects; a mechanism or biological interpretation; or something else.",
+            },
+            "verdict": {"type": "string", "enum": VERDICTS},
+        },
+        "required": ["explanation", "evidence_ids", "check_type", "verdict"],
+        "additionalProperties": False,
+    },
+    function=lambda **kwargs: kwargs,
+)
+
+
+def submit_verdict_tool(system: str = "v1", review: bool = False) -> Tool:
+    if review:
+        return SUBMIT_VERDICT_REVIEW
     return SUBMIT_VERDICT_V2 if system == "v2" else SUBMIT_VERDICT
 
 

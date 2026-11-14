@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 330" width="720" height="330" role="img"
+     aria-label="The same DNA variant can reach a child from the mother or from the father. Its association with a characteristic is measured separately for each route and can differ.">
+  <style>
+    text { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill: #1f2937; }
+    .title { font-size: 15px; font-weight: 600; }
+    .label { font-size: 13px; }
+    .small { font-size: 12px; fill: #4b5563; }
+    .person { fill: #f3f4f6; stroke: #9ca3af; stroke-width: 1.5; }
+    .faint { stroke: #d1d5db; stroke-width: 2; fill: none; }
+  </style>
+  <rect x="1" y="1" width="718" height="328" rx="12" fill="#ffffff" stroke="#e5e7eb"/>
+
+  <!-- Route 1: from the mother -->
+  <text class="title" x="180" y="34" text-anchor="middle">Inherited from the mother</text>
+  <circle class="person" cx="110" cy="84" r="24"/>
+  <circle class="person" cx="250" cy="84" r="24"/>
+  <circle class="person" cx="180" cy="176" r="24"/>
+  <text class="label" x="110" y="126" text-anchor="middle">mother</text>
+  <text class="label" x="250" y="126" text-anchor="middle">father</text>
+  <text class="label" x="180" y="218" text-anchor="middle">child</text>
+  <path class="faint" d="M236 104 L196 158"/>
+  <path d="M124 104 L164 158" stroke="#c2410c" stroke-width="3" fill="none"/>
+  <rect x="103" y="77" width="14" height="14" rx="3" fill="#c2410c" transform="rotate(45 110 84)"/>
+  <rect x="173" y="169" width="14" height="14" rx="3" fill="#c2410c" transform="rotate(45 180 176)"/>
+  <text class="small" x="180" y="250" text-anchor="middle">association measured across many people</text>
+  <rect x="70" y="262" width="220" height="16" rx="8" fill="#f3f4f6"/>
+  <rect x="70" y="262" width="170" height="16" rx="8" fill="#c2410c"/>
+
+  <line x1="360" y1="24" x2="360" y2="290" stroke="#e5e7eb" stroke-width="1.5"/>
+
+  <!-- Route 2: from the father -->
+  <text class="title" x="540" y="34" text-anchor="middle">Inherited from the father</text>
+  <circle class="person" cx="470" cy="84" r="24"/>
+  <circle class="person" cx="610" cy="84" r="24"/>
+  <circle class="person" cx="540" cy="176" r="24"/>
+  <text class="label" x="470" y="126" text-anchor="middle">mother</text>
+  <text class="label" x="610" y="126" text-anchor="middle">father</text>
+  <text class="label" x="540" y="218" text-anchor="middle">child</text>
+  <path class="faint" d="M484 104 L524 158"/>
+  <path d="M596 104 L556 158" stroke="#1d4ed8" stroke-width="3" fill="none"/>
+  <rect x="603" y="77" width="14" height="14" rx="3" fill="#1d4ed8" transform="rotate(45 610 84)"/>
+  <rect x="533" y="169" width="14" height="14" rx="3" fill="#1d4ed8" transform="rotate(45 540 176)"/>
+  <text class="small" x="540" y="250" text-anchor="middle">association measured across many people</text>
+  <rect x="430" y="262" width="220" height="16" rx="8" fill="#f3f4f6"/>
+  <rect x="430" y="262" width="70" height="16" rx="8" fill="#1d4ed8"/>
+
+  <text class="small" x="360" y="312" text-anchor="middle">Same variant, two routes. The measured association can differ between them. That difference is a parent-of-origin effect.</text>
+</svg>

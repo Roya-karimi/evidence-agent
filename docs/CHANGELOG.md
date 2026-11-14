@@ -1,8 +1,19 @@
 # Changelog
 
-## 2026-11-14: corrections after external review
+## 2026-11-14: review workflow
 
-An independent review of commit `6a79fb1` reproduced the reported counts and found the problems below. Each fix has a regression test. The saved runs were re-scored, not re-run ([RESULTS](RESULTS.md)).
+- **New `review` command.** It takes a results table (CSV) and a text file of draft statements, one per line, and writes a review table: the statement, the finding, a short explanation, the source rows and values, and a suggested action. It uses the same agent loop and tools as the evaluation, with system v2.
+- **Review rules (`data/review/rules.md`).** These are rules v2.1 with two changes that came from the author's review of the pilot's expected findings:
+    - A sentence that states a significance level is `contradicted` when the reported p-value does not meet it. Before, it was `insufficient_evidence`.
+    - "Parent-specific" wording is never `supported`: a non-significant estimate in the other parent does not show that its effect is zero. It is `contradicted` when the other parent's effect is significant, and otherwise `insufficient_evidence`.
+    - Runs 2 and 3 are not re-scored under these rules. Their models were given the earlier rules.
+- **The source column is read from the table**, not from the model's text. The action is chosen in Python from a fixed list, using the verdict and a `check_type` label that the model adds to its verdict in review mode.
+- **Pilot materials** in `pilot/`: 14 statements, their expected findings as reviewed by the author, and a scoring script.
+- **Pilot run:** 8 of 9 problem sentences caught, no false alarms on 5 sound ones, one miss ([RESULTS](RESULTS.md)). This is the only run of the corrected code with the model.
+
+## 2026-11-14: corrections after review
+
+A review of commit `6a79fb1` reproduced the reported counts and found the problems below. Each fix has a regression test. The saved runs were re-scored, not re-run ([RESULTS](RESULTS.md)).
 
 **Decision rules**
 
