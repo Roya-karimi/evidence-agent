@@ -54,7 +54,7 @@ A pilot on 14 sentences, 9 with a problem. I reviewed the expected findings befo
 | --- | --- | --- | --- |
 | 8 of 9 | 0 of 5 | 14 of 14 | 51 s |
 
-The miss: it accepted "specific to the maternally inherited allele", which a non-significant paternal estimate cannot show. Reading time was not measured and nothing was compared with checking by hand, so no time saving is claimed. See [pilot/README.md](pilot/README.md).
+The miss: it accepted "specific to the maternally inherited allele", which a non-significant paternal estimate cannot show. See [pilot/README.md](pilot/README.md).
 
 Is this better than simply asking the model? On accuracy, not so far: 26 of 32 benchmark claims right with tools, 23 without, and the difference is not significant. What the tools removed was misjudged p-value thresholds and numbers taken from the wrong row. The model's prose still slips. In one demo sentence it wrote that 2.22e-7 is below 5e-8; the finding was right because Python made the comparison.
 
@@ -76,7 +76,7 @@ One sentence per line. The table needs the columns of `data/poe_published/record
 ## Before you trust it
 
 - Small demo sets, on the one table the tool was developed with.
-- The labels of the two earlier benchmarks are provisional: no expert has reviewed them, and one decision rule was already found wrong and corrected.
+- I have gone through the 58 labels of the two earlier benchmarks. They are kept as they were run, but 13 of them would change under the rules I use now (5 significance claims and 8 "parent-specific" claims), and one decision rule had already been corrected before that.
 - After that correction the saved outputs were re-scored. The corrected code has been run with the model only on the pilot.
 
 More: [methods](docs/METHODS.md), [all results](docs/RESULTS.md), [corrections](docs/CHANGELOG.md).
