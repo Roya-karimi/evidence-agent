@@ -42,3 +42,33 @@ def test_mismatch_flag():
     rows = [{"claim_id": "a", "verdict": "supported", "explanation": "x. So the claim is contradicted."},
             {"claim_id": "b", "verdict": "contradicted", "explanation": "x. So the claim is contradicted."}]
     assert metrics.verdict_explanation_mismatches(rows) == ["a"]
+
+
+def _row(cid, verdict="supported", gold="supported", claim="c"):
+    return {"claim_id": cid, "gold": gold, "verdict": verdict, "claim": claim}
+
+
+def test_paired_comparison_refuses_incompatible_runs():
+    """Review finding 8."""
+    import pytest
+    a = [_row("a"), _row("b")]
+    with pytest.raises(ValueError, match="Duplicate"):
+        metrics.paired_comparison(a + [_row("a")], a, "1", "2")
+    with pytest.raises(ValueError, match="different claims"):
+        metrics.paired_comparison(a, [_row("a")], "1", "2")
+    with pytest.raises(ValueError, match="'claim'"):
+        metrics.paired_comparison(a, [_row("a"), _row("b", claim="the opposite claim")], "1", "2")
+    with pytest.raises(ValueError, match="'gold'"):
+        metrics.paired_comparison(a, [_row("a"), _row("b", gold="contradicted")], "1", "2")
+    text = metrics.paired_comparison(a, [_row("a")], "1", "2", allow_subset=True)
+    assert "Claims compared: 1" in text and "left out: b" in text
+
+
+def test_cluster_bootstrap_resamples_whole_clusters():
+    gold = ["supported"] * 6
+    pred = ["supported"] * 3 + ["contradicted"] * 3
+    # two clusters, one all right and one all wrong: resampled accuracy can only be 0, 0.5 or 1
+    lo, hi = metrics.bootstrap_ci(gold, pred, clusters=["x"] * 3 + ["y"] * 3)
+    assert (lo, hi) == (0.0, 1.0)
+    lo_claims, hi_claims = metrics.bootstrap_ci(gold, pred)
+    assert 0.0 < lo_claims and hi_claims < 1.0

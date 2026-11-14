@@ -1,0 +1,27 @@
+claim_id,claim,gold_verdict,trap_type,split,notes,claim_type,record_ids,parent,allele,direction,value,alpha
+V01,rs77708343 shows a parent-of-origin effect on basal metabolic rate.,supported,trait_synonym,test_v2,record trait is BMR; P_diff 7.53e-8,A,rs77708343_bmr,,,,,0.05
+V02,rs4731690 shows a parent-of-origin effect on HDL cholesterol.,supported,trait_synonym,test_v2,record trait is HDL-C level; P_diff 1.92e-6,A,rs4731690_hdl_c_level,,,,,0.05
+V03,rs10239342 shows a genome-wide significant (P < 5e-8) parent-of-origin effect on sex hormone-binding globulin.,insufficient_evidence,trait_synonym_threshold,test_v2,record trait is SHBG level; P_diff 1.87e-6,A,rs10239342_shbg_level,,,,,5e-8
+V04,rs12528876 has a paternal-specific effect on IGF-1 level.,contradicted,both_significant,test_v2,maternal effect also significant (P 0.016),C2,rs12528876_igf1_level,,,,,0.05
+V05,The paternal effect of rs12528876 on IGF-1 level is larger in magnitude than the maternal effect.,insufficient_evidence,larger_parent,test_v2,opposite signs (maternal +0.021; paternal -0.036): the difference test does not compare magnitudes. Relabelled from supported in v2.1,H,rs12528876_igf1_level,paternal,,,,0.05
+V06,rs7705526 has a larger effect on telomere length when maternally inherited than when paternally inherited.,supported,larger_parent,test_v2,maternal 0.106 > paternal 0.038; difference significant,H,rs7705526_telomere_length_ts_ratio,maternal,,,,0.05
+V07,rs78507815 has a maternal-specific effect on trunk fat-free mass.,contradicted,both_significant,test_v2,paternal effect also significant (P 7.0e-4),B2,rs78507815_trunk_fat_free_mass,,,,,0.05
+V08,rs7188903 has a maternal-specific effect on insulin-like growth factor 1.,supported,trait_synonym,test_v2,paternal P 0.10; record trait is IGF1 level,B2,rs7188903_igf1_level,,,,,0.05
+V09,The paternally inherited T allele of rs4417225 is associated with higher glucose level.,supported,,test_v2,paternal +0.029 (P 9.3e-5),D,rs4417225_glucose_level,paternal,T,+,,0.05
+V10,The maternally inherited A allele of rs170102 is associated with lower cystatin C.,contradicted,opposite_direction,test_v2,maternal +0.026 (P 3.2e-5),D,rs170102_cystatin_c_level,maternal,A,-,,0.05
+V11,The maternally inherited G allele of rs146982369 is associated with lower total protein level.,supported,,test_v2,maternal -0.106 (P 1.0e-3),D,rs146982369_total_protein_level,maternal,G,-,,0.05
+V12,The paternally inherited A allele of rs62471721 is associated with lower triglycerides.,supported,trait_synonym,test_v2,paternal -0.023 (P 9.7e-4); record trait is Triglyceride level,D,rs62471721_triglyceride_level,paternal,A,-,,0.05
+V13,The paternally inherited G allele of rs7188903 is associated with lower IGF-1 level.,insufficient_evidence,single_effect_ns,test_v2,paternal -0.012 (P 0.10),D,rs7188903_igf1_level,paternal,G,-,,0.05
+V14,The paternally inherited C allele of rs217215 is associated with higher creatinine level.,insufficient_evidence,allele_not_recorded,test_v2,effect allele is G; other allele not recorded,D,rs217215_creatinine_level,paternal,C,+,,0.05
+V15,The maternal and paternal effects of rs6026426 on trunk fat percentage do not differ.,contradicted,equivalence_claim,test_v2,P_diff 1.29e-6,E,rs6026426_trunk_fat,,,,,0.05
+V16,The maternal and paternal effects of rs3730173 on leg fat percentage go in opposite directions.,supported,,test_v2,maternal -0.035 and paternal +0.036 both significant,F,rs3730173_leg_fat,,,,,0.05
+V17,The maternal and paternal effects of rs7705526 on telomere length go in opposite directions.,contradicted,same_direction,test_v2,both positive and significant,F,rs7705526_telomere_length_ts_ratio,,,,,0.05
+V18,rs217215 shows a genome-wide significant (P < 5e-8) parent-of-origin effect on creatinine.,supported,threshold,test_v2,P_diff 4.94e-11,A,rs217215_creatinine_level,,,,,5e-8
+V19,rs62471721 shows a parent-of-origin effect on HDL cholesterol.,insufficient_evidence,wrong_variant_trait,test_v2,HDL-C is recorded only for rs4731690 (same region),A,,,,,,0.05
+V20,A variant near GNAS shows opposite maternal and paternal effects on trunk fat percentage.,supported,gene_level,test_v2,rs6026426: maternal -0.040 and paternal +0.045 both significant,F,rs6026426_trunk_fat,,,,,0.05
+V21,The paternal effect estimate of rs146982369 on total protein level is 0.101.,supported,numeric,test_v2,stored 0.101,G,rs146982369_total_protein_level,paternal,,,0.101,0.05
+V22,rs77708343 increases standing height through IGF2 overexpression when paternally inherited.,insufficient_evidence,causal_overreach,test_v2,records hold associations only,X,rs77708343_standing_height,,,,,0.05
+V23,The paternally inherited T allele of rs2299620 is associated with lower HbA1c.,insufficient_evidence,single_effect_ns,test_v2,paternal -0.011 (P 0.52),D,rs2299620_hba1c_level,paternal,T,-,,0.05
+V24,rs4417225 has a paternal-specific effect on glucose level.,contradicted,both_significant,test_v2,maternal effect also significant (P 2.0e-4),C2,rs4417225_glucose_level,,,,,0.05
+V25,rs146982369 shows a parent-of-origin effect on total protein level at P < 1e-6.,insufficient_evidence,threshold,test_v2,P_diff 2.59e-6,A,rs146982369_total_protein_level,,,,,1e-6
+V26,The maternally inherited T allele of rs3730173 is associated with higher leg fat percentage.,contradicted,opposite_direction,test_v2,maternal -0.035 (P 4.0e-4),D,rs3730173_leg_fat,maternal,T,+,,0.05

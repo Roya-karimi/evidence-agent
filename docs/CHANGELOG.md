@@ -1,12 +1,51 @@
 # Changelog
 
+## 2026-11-14: corrections after external review
+
+An independent review of commit `6a79fb1` reproduced the reported counts and found the problems below. Each fix has a regression test. The saved runs were re-scored, not re-run ([RESULTS](RESULTS.md)).
+
+**Decision rules**
+
+- **Magnitude claims with opposite signs.** Rule H (v2) used the p-value of β_m − β_p to support "larger in magnitude" claims. With opposite-sign estimates that is the wrong contrast. Rules v2.1 (`data/poe_published_v2_1/`) return `insufficient_evidence` in that case, and V05 is relabelled from `supported`. The parent-specific rules no longer use a magnitude comparison. The as-run rules and labels stay in `data/poe_published_v2/`.
+- `test_parental_difference` now reports `effect_signs`, with a note when the signs are opposite.
+
+**Agent loop**
+
+- **A verdict needs evidence.** Before, `submit_verdict` could be the first call, cite an invented ID and leave the explanation empty. A verdict is now accepted only after an evidence tool has returned a result. Every cited ID must have been returned by a tool, and a `supported` or `contradicted` verdict must cite a record whose estimates were retrieved. A rejected verdict goes back to the model as an error.
+- **Arguments are validated against each tool's schema** before the tool runs: object shape, required and unknown fields, types, enumerated values, finite numbers.
+- The agent prompt now states these requirements.
+
+**Statistics**
+
+- **No assumed covariance.** A missing covariance was silently replaced by zero. The difference test now uses the published p-value if there is one, a stored covariance if there is one, and is otherwise reported as unavailable. The synthetic records state their covariance explicitly.
+- **No mixed outputs.** For published records the tool returned the published p-value next to an SE, z and confidence interval recomputed from rounded estimates, and the two could disagree. The recomputed SE, z and interval are no longer returned.
+- **Input checks.** Non-finite numbers, non-positive SEs, α outside (0, 1) and covariances that imply a correlation beyond ±1 are rejected.
+
+**Energy tools**
+
+- Units other than metres and feet are rejected (74 km was read as 74 m).
+- `approximate` must be a boolean (the string "false" switched the 1% tolerance on).
+- Exact values are compared at the precision written in the claim (74.4 m no longer matches a record of 74 m).
+
+**Evaluation**
+
+- **Failed model calls are recorded.** A failed call produces a row with `status: operational_error`, the batch continues, and it stops after three failures in a row. The summary is marked incomplete. Requests have a time limit, a retry limit and an output-token limit.
+- **Run manifest.** Each run writes `manifest.json`: the model requested and the model the API reports, hashes of the rules, claims, records and code, the git commit, package versions, and how many claims finished.
+- **Paired comparisons check their inputs.** Duplicate claim IDs, different claim sets, or claims whose text or label differ between the runs are refused.
+- **Clustered bootstrap.** `scripts/score_saved_runs.py` re-scores the saved runs and adds intervals that resample variants instead of claims.
+
+**Wording**
+
+- "Pre-registered" is replaced by "fixed before the run": the plans were not registered externally.
+- V08 repeats the assertion of R31 with a different trait spelling. METHODS said no claim was repeated.
+
 ## 2026-11-13: Run 3, version 2 test
 
 - Tools: v1 20/26 → v2 22/26. Searches returning nothing 17 → 1; existing records never opened 3 → 0. H1 is supported for its mechanism.
 - No tools: v1 19/26 → v2 24/26 (McNemar p = 0.13). Verdict–explanation mismatches 3 → 0. H2 is supported in direction.
 - Open issues: allele orientation (V14), mechanism claims with no allele named (V22), and threshold failures recorded as `contradicted` (V03). Candidate next step: a tool that checks allele compatibility. Details in [RESULTS.md](RESULTS.md).
 
-## 2026-11-13: version 2 (pre-registered before any v2 run)
+## 2026-11-13: version 2 (fixed before any v2 run)
 
 - **`--system v2`.**
     - rsID-first search, with normalised trait words.

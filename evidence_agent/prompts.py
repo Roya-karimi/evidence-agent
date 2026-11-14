@@ -27,6 +27,8 @@ Decision rules for this domain:
 AGENT_EXTRA = """
 Use the tools to look up records and to compute every statistic you rely on.
 Do not do arithmetic yourself. If a record is not found, do not guess.
+Look the records up before you submit a verdict, and cite only record IDs that
+the tools returned. A verdict submitted without a lookup is rejected.
 """
 
 NO_TOOLS_EXTRA = """

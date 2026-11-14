@@ -9,16 +9,27 @@ Each input is one natural-language claim and one domain. The output is a verdict
 `evidence_agent/agent.py` runs a standard tool-calling loop on the OpenAI Chat Completions API:
 
 1. Messages: a system prompt (task definition + decision rules) and the claim.
-2. The model must respond with tool calls (`tool_choice="required"`), so it cannot answer in free text and skip the checks.
-3. Each requested tool is executed in Python, and the result is returned as a `tool` message.
-4. The loop ends when the model calls `submit_verdict`, or after 8 rounds. If no verdict is given in time, that is recorded as a failure.
+2. The model must respond with tool calls (`tool_choice="required"`), so it cannot answer in free text.
+3. Each call's arguments are checked against the tool's schema: object shape, required and unknown fields, types, enumerated values and finite numbers. A valid call is executed in Python, and the result is returned as a `tool` message. An invalid call is returned as an error, so the model can correct it.
+4. The loop ends when the model submits a verdict that passes the acceptance checks below, or after 8 rounds.
 
-If a tool is called with invalid arguments, the exception is returned to the model as an error message, so it can correct the call. Temperature is 0. Each run records the full trace, token use and latency.
+**Acceptance checks for a verdict.** `submit_verdict` is itself a tool, so requiring a tool call does not by itself force an evidence lookup. A verdict is accepted only if:
+
+- its arguments fit the schema and the explanation is not empty;
+- it is the only call in its turn, so the model has seen every result it relies on;
+- with tools: at least one evidence tool has returned a result, every cited record ID was returned by a tool, and a `supported` or `contradicted` verdict cites at least one record whose estimates were retrieved;
+- without tools: every cited ID exists in the records, and a `supported` or `contradicted` verdict cites at least one.
+
+A rejected verdict is returned to the model as an error. These checks are structural. They show that a verdict cites evidence that was looked up; whether the verdict is right is what the evaluation measures.
+
+**Outcomes.** Each claim ends with one of three statuses: `ok` (a verdict was accepted), `no_valid_verdict` (the model did not produce an acceptable verdict within 8 rounds) or `operational_error` (the model call failed). An operational error is never recorded as `insufficient_evidence`.
+
+Temperature is 0. Each request has a 60-second time limit, at most 2 retries and a 1,000-token output limit. Each run records the full trace, token use and latency.
 
 ## 3. Tool design
 
 - **IDs, not numbers.** Lookup and test tools take a record ID. The only numbers the model passes are values stated in the claim itself. This removes transcription and invention of estimates as error sources.
-- **All arithmetic in Python.** That includes statistical tests, unit conversion (feet to metres) and tolerances (1% for "about" claims).
+- **All arithmetic in Python.** That includes statistical tests, unit conversion (feet to metres) and tolerances. A value stated in a claim is passed as text, so the tool can read its precision: an exact value must match within half a unit of its last written digit, and an "about" value within 1% of the record value.
 - **Structured final answer.** The verdict is a tool call with an enumerated verdict field and an evidence list, so every output can be scored automatically.
 - **Explicit "not found".** Missing records and missing values come back as `found: false`, or as a null value with a note, never as an error the model might work around by guessing.
 
@@ -36,7 +47,17 @@ z       = diff / SE_diff
 
 The test gives a two-sided p-value and a (1 − α) confidence interval for the difference.
 
-`Cov(β_m, β_p)` is zero only when the two estimates come from independent samples. Estimates from the same trio regression are correlated. Their covariance should come from that model's variance–covariance matrix, and it is used whenever it is stored. In the synthetic benchmark, locus F is significant only when the covariance is included (p = 0.033 with it, p = 0.099 if it is assumed to be zero).
+**Covariance is never assumed.** Estimates from the same trio regression are correlated, and the covariance should come from that model's variance–covariance matrix. The difference test therefore has three cases:
+
+1. The record has a published p-value for the difference. That p-value is the result. No SE, z or confidence interval of the difference is returned, because the source gives rounded estimates and no covariance.
+2. The record has a stored covariance. The test is computed with it.
+3. The record has neither. The test is reported as unavailable.
+
+The synthetic records state their covariance explicitly. In that benchmark, locus F is significant only with its covariance (p = 0.033 with it, p = 0.099 with zero).
+
+**Magnitude claims.** "The paternal effect is larger" is a claim about |β_p| and |β_m|. When the two estimates have the same sign, the difference test addresses it. When they have opposite signs, equal magnitudes means β_m + β_p = 0, a different contrast with variance SE_m² + SE_p² + 2·Cov. The published records hold neither that test nor the covariance, so such a claim is `insufficient_evidence`. The tool reports `effect_signs` so that the model does not have to work this out.
+
+**Input checks.** The statistics functions reject non-finite numbers, non-positive standard errors, α outside (0, 1), and a covariance larger in absolute value than SE_m·SE_p.
 
 **Equality claims.** A non-significant difference never supports a claim that two effects are equal. Supporting equality would need an equivalence test with a pre-specified margin, which is not implemented.
 
@@ -91,9 +112,11 @@ The verdicts are 15 `supported`, 7 `contradicted` and 10 `insufficient_evidence`
 
 **Gold verification.** `scripts/verify_gold.py` re-derives every gold verdict from structured columns in `claims.csv` (claim type, record IDs, parent, allele, direction, value, threshold). It uses the same statistical tools as the agent and never calls the model. All 32 verdicts are reproduced, and the test suite runs the check.
 
-**Pre-registration.** The decision rules for this benchmark were fixed before any model was run on it, and every claim belongs to the `test` split.
+**Rules fixed in advance.** The decision rules for this benchmark were written before any model was run on it, and every claim belongs to the `test` split. The rules and plans in this project were not registered externally, and the repository's public history begins after Runs 2 and 3. From commit `6a79fb1` onwards, the git history records when each rule, claim and plan changed.
 
-## 7. Version 2 and its pre-registered test
+**Thresholds.** The paper identifies parent-of-origin effects with its own study-specific discovery thresholds. This benchmark tests agreement with its own rules at α = 0.05 or at a threshold stated in the claim. It does not reproduce the paper's discovery classification.
+
+## 7. Version 2 and its test
 
 The Run 2 traces pointed to three failure modes ([RESULTS](RESULTS.md)). Version 2 addresses each one. All three changes, the new claims and the analysis plan below were fixed before any version 2 run.
 
@@ -112,7 +135,7 @@ The strict "specific" rule treats a non-significant effect in the other parent a
 - thresholds, alleles that are not recorded, non-significant single effects
 - claims about the wrong variant–trait pair
 
-None repeats a Run 2 claim. All 26 verdicts are reproduced by `scripts/verify_gold.py`.
+None repeats the wording of a Run 2 claim. One, V08, makes the same assertion as R31 (a maternal-specific effect of rs7188903 on IGF-1) with a different trait spelling; it is a regression case, not a new assertion. All 26 verdicts were reproduced by `scripts/verify_gold.py` under rules v2.
 
 **Design.** A 2×2 comparison on the same 26 claims: system v1 or v2 (`--system`), crossed with tools or no tools (`--mode`). Both systems use the version 2 rules, so the comparison isolates the two system changes.
 
@@ -130,7 +153,15 @@ None repeats a Run 2 claim. All 26 verdicts are reproduced by `scripts/verify_go
 
 With 26 claims only large differences are detectable, so results are reported as counts with the claims named.
 
-Results: [RESULTS, Run 3](RESULTS.md#run-3-version-2-test-pre-registered-26-new-claims).
+Results: [RESULTS, Run 3](RESULTS.md#run-3-version-2-test-26-new-claims).
+
+**Correction: rules v2.1.** After Run 3, an external review showed that rule H was wrong for estimates with opposite signs (see "Magnitude claims" in §4). `data/poe_published_v2_1/` holds the corrected rules and labels:
+
+- Rule H returns `insufficient_evidence` when the two estimates have opposite signs.
+- The parent-specific rules (B, C) no longer use a magnitude comparison. A parent-specific claim is `contradicted` when the difference is significant and the other parent's effect is significant.
+- One label changes: V05, from `supported` to `insufficient_evidence`. The v2.1 verdicts are 11 supported, 7 contradicted and 8 insufficient evidence.
+
+`data/poe_published_v2/` keeps the rules and labels as they were given to the model in Run 3. `verify_gold.py` implements the corrected rules: it reproduces 26 of 26 labels in v2.1, and reports V05 in the as-run file as superseded. The same script cannot catch an error in a rule, because it implements that rule; this error was found by review, not by the check.
 
 ## 8. Evaluation design
 
@@ -144,13 +175,17 @@ Results: [RESULTS, Run 3](RESULTS.md#run-3-version-2-test-pre-registered-26-new-
     - accuracy by error type and by split
     - mean tool calls and tokens
 - **Reference point.** A model that always answers the most common verdict scores 15/32 (0.47) on the published benchmark and 9/20 on the synthetic parent-of-origin set. Results are read against that floor.
-- **Paired comparison.** Both conditions run on the same claims, so they are compared on the discordant claims with an exact McNemar test (`python -m evidence_agent compare`).
+- **Paired comparison.** Both conditions run on the same claims, so they are compared on the discordant claims with an exact McNemar test (`python -m evidence_agent compare`). The comparison refuses runs with duplicate claim IDs, different claim sets, or claims whose text or label differ.
+- **Shared records.** Several claims concern the same variant, so claims are not independent. `scripts/score_saved_runs.py` adds a bootstrap that resamples variants instead of claims. All intervals and tests are exploratory and describe this claim set only.
 - **Error severity.** The confusion matrix is read asymmetrically. Calling an unresolved claim `contradicted` (or `supported`) states something the records do not establish. That is more serious than returning `insufficient_evidence` for a claim that could have been decided.
 
 ## 9. Reproducibility
 
-Every run is saved to `results/<domain>_<mode>_<timestamp>/`:
-- `runs.jsonl` holds, for each claim, the model name, every tool call with its arguments and result, the verdict, tokens and latency.
-- `summary.md` holds the metrics.
+Every run is saved to `results/<domain>_<mode>_<system>_<timestamp>/`:
+- `runs.jsonl` holds, for each claim, the status, the model name, every tool call with its arguments and result, the verdict, tokens and latency. It is written claim by claim, so an interrupted run keeps what finished.
+- `summary.md` holds the metrics. It is marked incomplete if any model call failed.
+- `manifest.json` holds the model requested and the model the API reports, the request settings, SHA-256 hashes of the rules, claims, records and code, the git commit, the Python and `openai` versions, and the number of claims that finished, failed or were not attempted.
+
+Runs 2 and 3 were made at commit `6a79fb1`, before the manifest existed. They record the requested model name only. `python scripts/score_saved_runs.py` recounts them from the saved traces.
 
 The offline test suite (`tests/`) checks the statistics against known values, and exercises the agent loop and the evaluation pipeline with a scripted model, without any API calls.

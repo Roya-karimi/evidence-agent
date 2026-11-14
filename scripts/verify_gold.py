@@ -5,7 +5,11 @@ The model never sees this script. It reads the structured columns of claims.csv
 verdict with the same statistical tools the agent uses, and reports any claim
 whose gold label disagrees.
 
-Run:  python scripts/verify_gold.py poe_published
+The parent-specific rules (B2, C2) and the magnitude rule (H) are the corrected
+version 2.1 rules. Types B and C are the version 1 rules exactly as given to the
+model in Run 2.
+
+Run:  python scripts/verify_gold.py poe_published_v2_1
 """
 
 import csv
@@ -16,6 +20,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from evidence_agent.domains import load_domain  # noqa: E402
 
 S, C, I = "supported", "contradicted", "insufficient_evidence"
+
+# As-run labels that a later rule correction replaced. They stay in the as-run claim
+# file, because that is what the saved runs were scored against.
+SUPERSEDED = {"poe_published_v2": {"V05": "relabelled in poe_published_v2_1 (magnitude claim, opposite signs)"}}
 
 
 def verdict_for_record(rec_id, claim, tools, records):
@@ -31,15 +39,17 @@ def verdict_for_record(rec_id, claim, tools, records):
 
     if t == "A":
         return S if diff_sig else I
-    if t in ("B2", "C2"):              # strict parent-specific (rules v2)
+    if t in ("B2", "C2"):              # strict parent-specific (rules v2.1)
         own, other = (m, p) if t == "B2" else (p, m)
         if diff_sig and own["significant"] and not other["significant"]:
             return S
-        if diff_sig and (other["significant"] or abs(other["beta"]) > abs(own["beta"])):
+        if diff_sig and other["significant"]:
             return C
         return I
-    if t == "H":                        # larger effect in the named parent
+    if t == "H":                        # larger effect in the named parent (rules v2.1)
         own, other = (m, p) if claim["parent"] == "maternal" else (p, m)
+        if d["effect_signs"] == "opposite":     # the difference test does not compare magnitudes
+            return I
         if diff_sig and abs(own["beta"]) > abs(other["beta"]):
             return S
         if diff_sig and abs(other["beta"]) > abs(own["beta"]):
@@ -97,13 +107,20 @@ def main(domain_name: str) -> int:
     tools = {t.name: t.function for t in domain["tools"]}
     with open(domain["claims_path"], newline="", encoding="utf-8") as f:
         claims = list(csv.DictReader(f))
-    mismatches = 0
+    superseded = SUPERSEDED.get(domain_name, {})
+    mismatches = old = 0
     for c in claims:
         v = verdict(c, tools, domain["records"])
         ok = v == c["gold_verdict"]
+        if not ok and c["claim_id"] in superseded:
+            old += 1
+            print(f"[old] {c['claim_id']} gold={c['gold_verdict']:<22} rules={v}  ({superseded[c['claim_id']]})")
+            continue
         mismatches += not ok
         print(f"[{'ok ' if ok else 'BAD'}] {c['claim_id']} gold={c['gold_verdict']:<22} rules={v}")
-    print(f"\n{len(claims) - mismatches}/{len(claims)} gold verdicts reproduced by the rule implementation.")
+    print(f"\n{len(claims) - mismatches - old}/{len(claims)} gold verdicts reproduced by the rule implementation.")
+    if old:
+        print(f"{old} as-run label(s) superseded by a later rule correction (marked [old]).")
     return 1 if mismatches else 0
 
 

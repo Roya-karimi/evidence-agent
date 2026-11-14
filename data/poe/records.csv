@@ -1,8 +1,8 @@
 locus_id,trait,beta_maternal,se_maternal,beta_paternal,se_paternal,cov_maternal_paternal,source
-LOCUS_A,BMI z-score (SYNTHETIC),0.080,0.015,0.005,0.015,,SYNTHETIC example - replace with published estimates
-LOCUS_B,BMI z-score (SYNTHETIC),0.040,0.016,0.015,0.016,,SYNTHETIC example - replace with published estimates
-LOCUS_C,BMI z-score (SYNTHETIC),-0.002,0.014,0.070,0.014,,SYNTHETIC example - replace with published estimates
-LOCUS_D,BMI z-score (SYNTHETIC),0.050,0.012,0.046,0.012,,SYNTHETIC example - replace with published estimates
-LOCUS_E,BMI z-score (SYNTHETIC),0.060,0.015,-0.055,0.015,,SYNTHETIC example - replace with published estimates
+LOCUS_A,BMI z-score (SYNTHETIC),0.080,0.015,0.005,0.015,0,SYNTHETIC example - replace with published estimates
+LOCUS_B,BMI z-score (SYNTHETIC),0.040,0.016,0.015,0.016,0,SYNTHETIC example - replace with published estimates
+LOCUS_C,BMI z-score (SYNTHETIC),-0.002,0.014,0.070,0.014,0,SYNTHETIC example - replace with published estimates
+LOCUS_D,BMI z-score (SYNTHETIC),0.050,0.012,0.046,0.012,0,SYNTHETIC example - replace with published estimates
+LOCUS_E,BMI z-score (SYNTHETIC),0.060,0.015,-0.055,0.015,0,SYNTHETIC example - replace with published estimates
 LOCUS_F,BMI z-score (SYNTHETIC),0.045,0.015,0.010,0.015,0.00009,SYNTHETIC example - replace with published estimates
 LOCUS_G,BMI z-score (SYNTHETIC),0.050,0.015,,,,SYNTHETIC example - paternal estimate missing on purpose

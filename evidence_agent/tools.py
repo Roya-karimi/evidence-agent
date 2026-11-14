@@ -9,6 +9,7 @@ looks the numbers up itself, so the model cannot mistype or invent an estimate.
 The only numbers the model passes are values *stated in the claim*.
 """
 
+import math
 import re
 from dataclasses import dataclass
 from typing import Callable
@@ -16,7 +17,7 @@ from typing import Callable
 from . import stats
 
 VERDICTS = ["supported", "contradicted", "insufficient_evidence"]
-FEET_TO_M = 0.3048
+UNIT_TO_M = {"m": 1.0, "ft": 0.3048}
 
 
 @dataclass
@@ -35,6 +36,46 @@ class Tool:
                 "parameters": self.parameters,
             },
         }
+
+    def problems(self, arguments) -> list:
+        """Reasons the model's arguments do not fit this tool's schema (empty if they fit)."""
+        return validate_arguments(arguments, self.parameters)
+
+
+_TYPE_CHECKS = {
+    "string": lambda v: isinstance(v, str),
+    "boolean": lambda v: isinstance(v, bool),
+    "number": lambda v: isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v),
+    "array": lambda v: isinstance(v, list),
+}
+
+
+def validate_arguments(arguments, parameters: dict) -> list:
+    """Check model-supplied arguments against a tool's JSON schema.
+
+    The API does not guarantee that arguments follow the schema, so every call is
+    checked before it runs: object shape, required and unknown fields, types
+    (a string "false" is not a boolean), enumerated values and finite numbers.
+    """
+    if not isinstance(arguments, dict):
+        return [f"arguments must be a JSON object, got {type(arguments).__name__}"]
+    props = parameters.get("properties", {})
+    problems = [f"missing required field '{k}'" for k in parameters.get("required", []) if k not in arguments]
+    problems += [f"unknown field '{k}'" for k in arguments if k not in props]
+    for key, value in arguments.items():
+        spec = props.get(key)
+        if spec is None:
+            continue
+        kind = spec.get("type")
+        if kind in _TYPE_CHECKS and not _TYPE_CHECKS[kind](value):
+            problems.append(f"'{key}' must be a {kind}, got {value!r}")
+            continue
+        if "enum" in spec and value not in spec["enum"]:
+            problems.append(f"'{key}' must be one of {spec['enum']}, got {value!r}")
+        if kind == "array" and spec.get("items", {}).get("type") == "string":
+            if not all(isinstance(item, str) for item in value):
+                problems.append(f"every item of '{key}' must be a string")
+    return problems
 
 
 # The final answer is itself a tool call, so the verdict is always structured.
@@ -104,23 +145,29 @@ def _not_found(record_id, records):
     return {"found": False, "record_id": record_id, "available_ids": sorted(records)}
 
 
-def _use_reported_p(result: dict, reported, alpha: float, key: str = "p") -> dict:
-    """Prefer the p-value printed in the source over one recomputed from rounded estimates."""
+def _single_parent_test(r: dict, parent: str, alpha: float) -> dict:
+    """One parent's effect: the published p-value if the record has one, otherwise a Wald test."""
+    wald = stats.wald_test(r[f"beta_{parent}"], r[f"se_{parent}"])
+    reported = r.get(f"p_{parent}")
     if isinstance(reported, float):
-        result[f"{key}_computed_from_rounded_estimates"] = result[key]
-        result[key] = reported
-        result[f"{key}_source"] = "reported"
+        out = {"beta": wald["beta"], "se": wald["se"], "p": reported, "p_source": "reported",
+               "p_recomputed_from_rounded_estimates": wald["p"]}
     else:
-        result[f"{key}_source"] = "computed"
-    return result
+        out = {**wald, "p_source": "computed"}
+    out["significant"] = out["p"] < alpha
+    return out
 
 
 def poe_tools(records: dict, system: str = "v1") -> list:
     """Tools for parent-of-origin claims. Records need beta/se for each parent.
 
-    If a record also holds published p-values (p_maternal, p_paternal, p_difference),
+    If a record holds published p-values (p_maternal, p_paternal, p_difference),
     significance decisions use them: published estimates are rounded, so p-values
     recomputed from them can differ substantially from the exact ones.
+
+    Without a published difference p-value, the difference test needs the record's
+    maternal-paternal covariance. If that is missing too, the test is reported as
+    unavailable; a covariance is never assumed.
     """
 
     def find_records(query: str):
@@ -160,6 +207,7 @@ def poe_tools(records: dict, system: str = "v1") -> list:
         return {"found": True, "locus_id": locus_id, **records[locus_id]}
 
     def test_parental_difference(locus_id: str, alpha: float = 0.05):
+        alpha = stats.check_alpha(alpha)
         if locus_id not in records:
             return _not_found(locus_id, records)
         r = records[locus_id]
@@ -167,30 +215,55 @@ def poe_tools(records: dict, system: str = "v1") -> list:
         missing = [k for k in needed if r.get(k) is None]
         if missing:
             return {"found": True, "locus_id": locus_id, "error": f"Missing fields: {missing}"}
-        result = stats.compare_parental_effects(
-            r["beta_maternal"], r["se_maternal"], r["beta_paternal"], r["se_paternal"],
-            cov=r.get("cov_maternal_paternal") or 0.0, alpha=alpha,
-        )
-        _use_reported_p(result["maternal"], r.get("p_maternal"), alpha)
-        _use_reported_p(result["paternal"], r.get("p_paternal"), alpha)
-        _use_reported_p(result, r.get("p_difference"), alpha, key="p_difference")
-        result["maternal"]["significant"] = result["maternal"]["p"] < alpha
-        result["paternal"]["significant"] = result["paternal"]["p"] < alpha
-        result["difference_significant"] = result["p_difference"] < alpha
-        return {"found": True, "locus_id": locus_id, "trait": r.get("trait"),
-                "effect_allele": r.get("effect_allele"), **result}
+
+        bm, bp = r["beta_maternal"], r["beta_paternal"]
+        out = {"found": True, "locus_id": locus_id, "trait": r.get("trait"),
+               "effect_allele": r.get("effect_allele"), "alpha": alpha,
+               "maternal": _single_parent_test(r, "maternal", alpha),
+               "paternal": _single_parent_test(r, "paternal", alpha),
+               "difference": bm - bp,
+               "effect_signs": "opposite" if (bm > 0) != (bp > 0) else "same"}
+        if out["effect_signs"] == "opposite":
+            out["magnitude_note"] = ("The estimates have opposite signs. The difference test is about "
+                                     "beta_maternal - beta_paternal; it does not test which effect is larger in magnitude.")
+
+        reported, cov = r.get("p_difference"), r.get("cov_maternal_paternal")
+        if isinstance(reported, float):
+            # The published test is the decision. Its SE, z and CI are not returned: the source
+            # gives rounded estimates and no covariance, so they cannot be reconstructed.
+            out.update({"p_difference": reported, "p_difference_source": "reported",
+                        "difference_significant": reported < alpha,
+                        "se_difference": None, "ci_difference": None,
+                        "uncertainty_note": "SE and CI of the difference are unavailable: the source reports "
+                                            "the p-value of the difference but not the maternal-paternal covariance."})
+            approx = stats.compare_parental_effects(bm, r["se_maternal"], bp, r["se_paternal"], cov=0.0, alpha=alpha)
+            out["p_difference_recomputed_from_rounded_estimates_assuming_zero_covariance"] = approx["p_difference"]
+            out["recomputed_note"] = "Recomputed values are for illustration only. Never use them for a verdict."
+        elif cov is None:
+            out.update({"p_difference": None, "p_difference_source": "unavailable",
+                        "difference_significant": None,
+                        "error": "Difference test unavailable: the record has no published p-value for the "
+                                 "difference and no maternal-paternal covariance."})
+        else:
+            test = stats.compare_parental_effects(bm, r["se_maternal"], bp, r["se_paternal"], cov=cov, alpha=alpha)
+            out.update({"p_difference": test["p_difference"], "p_difference_source": "computed",
+                        "difference_significant": test["difference_significant"],
+                        "se_difference": test["se_difference"], "z_difference": test["z_difference"],
+                        "ci_difference": [test["ci_low"], test["ci_high"]],
+                        "covariance_used": cov})
+        return out
 
     def test_single_effect(locus_id: str, parent: str, alpha: float = 0.05):
+        alpha = stats.check_alpha(alpha)
+        if parent not in ("maternal", "paternal"):
+            raise ValueError("parent must be 'maternal' or 'paternal'.")
         if locus_id not in records:
             return _not_found(locus_id, records)
         r = records[locus_id]
-        beta, se = r.get(f"beta_{parent}"), r.get(f"se_{parent}")
-        if beta is None or se is None:
+        if r.get(f"beta_{parent}") is None or r.get(f"se_{parent}") is None:
             return {"found": True, "locus_id": locus_id, "error": f"No {parent} estimate"}
-        result = _use_reported_p(stats.wald_test(beta, se), r.get(f"p_{parent}"), alpha)
-        result["significant"] = result["p"] < alpha
-        return {"found": True, "locus_id": locus_id, "parent": parent,
-                "effect_allele": r.get("effect_allele"), **result}
+        return {"found": True, "locus_id": locus_id, "parent": parent, "alpha": alpha,
+                "effect_allele": r.get("effect_allele"), **_single_parent_test(r, parent, alpha)}
 
     locus = {"locus_id": {"type": "string", "description": "Locus ID exactly as in the data."}}
     return [
@@ -199,24 +272,25 @@ def poe_tools(records: dict, system: str = "v1") -> list:
              "Use this to find the exact locus_id before testing.",
              {"type": "object",
               "properties": {"query": {"type": "string", "description": "e.g. 'rs10838787' or 'KLF14 hip'"}},
-              "required": ["query"]},
+              "required": ["query"], "additionalProperties": False},
              find_records),
         Tool("get_estimates", "Look up the stored maternal and paternal estimates for a locus.",
-             {"type": "object", "properties": locus, "required": ["locus_id"]}, get_estimates),
+             {"type": "object", "properties": locus, "required": ["locus_id"], "additionalProperties": False},
+             get_estimates),
         Tool("test_parental_difference",
-             "Test whether maternal and paternal effects differ (z-test of the difference). "
+             "Test whether maternal and paternal effects differ (beta_maternal - beta_paternal). "
              "The result also contains the single-parent tests for both parents, so "
              "test_single_effect is not needed for the same locus.",
              {"type": "object",
               "properties": {**locus, "alpha": {"type": "number", "description": "Significance level, default 0.05."}},
-              "required": ["locus_id"]},
+              "required": ["locus_id"], "additionalProperties": False},
              test_parental_difference),
         Tool("test_single_effect", "Test whether one parent's effect differs from zero.",
              {"type": "object",
               "properties": {**locus,
                              "parent": {"type": "string", "enum": ["maternal", "paternal"]},
                              "alpha": {"type": "number", "description": "Significance level, default 0.05."}},
-              "required": ["locus_id", "parent"]},
+              "required": ["locus_id", "parent"], "additionalProperties": False},
              test_single_effect),
     ]
 
@@ -229,8 +303,15 @@ def energy_tools(records: dict) -> list:
             return _not_found(record_id, records)
         return {"found": True, "record_id": record_id, **records[record_id]}
 
-    def compare_field(record_id: str, field: str, claimed_value: float,
+    def compare_field(record_id: str, field: str, claimed_value: str,
                       claimed_unit: str = "m", approximate: bool = False):
+        if claimed_unit not in UNIT_TO_M:
+            raise ValueError(f"Unsupported unit '{claimed_unit}'. Supported: {sorted(UNIT_TO_M)}.")
+        if not isinstance(approximate, bool):
+            raise ValueError("approximate must be true or false.")
+        text = str(claimed_value).replace(",", "").replace(" ", "")
+        if not re.fullmatch(r"-?\d+(\.\d+)?", text):
+            raise ValueError(f"claimed_value must be a plain number as written in the claim, got {claimed_value!r}.")
         if record_id not in records:
             return _not_found(record_id, records)
         r = records[record_id]
@@ -239,26 +320,36 @@ def energy_tools(records: dict) -> list:
         if r[field] is None:
             return {"found": True, "record_id": record_id, "field": field, "source": None,
                     "note": "Value missing in source."}
-        claimed_m = claimed_value * FEET_TO_M if claimed_unit == "ft" else claimed_value
-        tolerance = 0.01 * abs(r[field]) if approximate else 0.5   # 0.5 m = rounding to whole metres
+        if isinstance(r[field], str):
+            return {"found": True, "error": f"Field '{field}' is not numeric", "fields": sorted(r)}
+        to_m = UNIT_TO_M[claimed_unit]
+        decimals = len(text.split(".")[1]) if "." in text else 0
+        claimed_m = float(text) * to_m
+        if approximate:
+            tolerance, basis = 0.01 * abs(r[field]), "1% of the record value ('about')"
+        else:       # half a unit of the last digit written in the claim, in the claim's own unit
+            tolerance, basis = 0.5 * 10 ** (-decimals) * to_m, f"claim stated to {decimals} decimal place(s)"
         return {"found": True, "record_id": record_id, "field": field,
-                "claimed_unit": claimed_unit, "claimed_in_m": round(claimed_m, 2),
+                "claimed_unit": claimed_unit, "claimed_in_m": round(claimed_m, 4), "tolerance_basis": basis,
                 **stats.compare_value(claimed_m, r[field], tolerance)}
 
     rid = {"record_id": {"type": "string", "description": "Record ID exactly as in the data."}}
     return [
         Tool("get_record", "Look up a full source record by ID.",
-             {"type": "object", "properties": rid, "required": ["record_id"]}, get_record),
+             {"type": "object", "properties": rid, "required": ["record_id"], "additionalProperties": False},
+             get_record),
         Tool("compare_field",
-             "Compare a value stated in the claim with the record value. Handles feet-to-metre "
-             "conversion and the 1% tolerance for 'about' claims.",
+             "Compare a value stated in the claim with the record value. Handles feet-to-metre conversion, "
+             "the precision stated in the claim, and the 1% tolerance for 'about' claims.",
              {"type": "object",
               "properties": {**rid,
                              "field": {"type": "string", "description": "Column name, e.g. vertical_depth_m."},
-                             "claimed_value": {"type": "number", "description": "The number as written in the claim."},
+                             "claimed_value": {"type": "string",
+                                               "description": "The number exactly as written in the claim, as text, "
+                                                              "for example \"74\" or \"74.4\". Its decimals set the precision."},
                              "claimed_unit": {"type": "string", "enum": ["m", "ft"]},
                              "approximate": {"type": "boolean",
                                              "description": "True if the claim says 'about' or 'approximately'."}},
-              "required": ["record_id", "field", "claimed_value"]},
+              "required": ["record_id", "field", "claimed_value"], "additionalProperties": False},
              compare_field),
     ]

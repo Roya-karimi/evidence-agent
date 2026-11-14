@@ -10,6 +10,20 @@ from statistics import NormalDist
 _STD_NORMAL = NormalDist()
 
 
+def _finite(name: str, value) -> float:
+    """Reject anything that is not a finite number (booleans, strings, inf, nan)."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+        raise ValueError(f"{name} must be a finite number, got {value!r}.")
+    return float(value)
+
+
+def check_alpha(alpha) -> float:
+    alpha = _finite("alpha", alpha)
+    if not 0 < alpha < 1:
+        raise ValueError(f"alpha must be between 0 and 1 (exclusive), got {alpha}.")
+    return alpha
+
+
 def two_sided_p(z: float) -> float:
     """Two-sided p-value for a standard normal test statistic."""
     return math.erfc(abs(z) / math.sqrt(2))
@@ -17,6 +31,7 @@ def two_sided_p(z: float) -> float:
 
 def wald_test(beta: float, se: float) -> dict:
     """Test H0: beta = 0 for a single estimate."""
+    beta, se = _finite("beta", beta), _finite("se", se)
     if se <= 0:
         raise ValueError("Standard error must be positive.")
     z = beta / se
@@ -28,7 +43,7 @@ def compare_parental_effects(
     se_maternal: float,
     beta_paternal: float,
     se_paternal: float,
-    cov: float = 0.0,
+    cov: float,
     alpha: float = 0.05,
 ) -> dict:
     """Test whether the maternal and paternal effects differ.
@@ -39,18 +54,26 @@ def compare_parental_effects(
         se_diff = sqrt(se_m^2 + se_p^2 - 2 * cov)
         z       = diff / se_diff
 
-    `cov` is the covariance between the two estimates. It is 0 only if they
-    come from independent samples. If both come from the same regression
-    model (common in trio designs), the covariance should be taken from the
-    model's variance-covariance matrix; assuming 0 can make the test too
-    conservative or too liberal depending on its sign.
+    `cov` is the covariance between the two estimates and has no default: the
+    caller must supply it. Estimates from the same regression model (common in
+    trio designs) are correlated, and the covariance should come from that
+    model's variance-covariance matrix. Assuming 0 without justification can
+    make the test too conservative or too liberal, depending on its sign.
 
     Why this test matters: "maternal p < 0.05, paternal p > 0.05" does not
     show that the two effects differ. The difference must be tested directly.
     """
+    beta_maternal, beta_paternal = _finite("beta_maternal", beta_maternal), _finite("beta_paternal", beta_paternal)
+    se_maternal, se_paternal = _finite("se_maternal", se_maternal), _finite("se_paternal", se_paternal)
+    cov, alpha = _finite("cov", cov), check_alpha(alpha)
+    if se_maternal <= 0 or se_paternal <= 0:
+        raise ValueError("Standard errors must be positive.")
+    if abs(cov) > se_maternal * se_paternal * (1 + 1e-12):
+        raise ValueError(f"|cov| cannot exceed se_maternal * se_paternal = {se_maternal * se_paternal:g} "
+                         f"(a correlation beyond +/-1), got {cov:g}.")
     var_diff = se_maternal**2 + se_paternal**2 - 2 * cov
-    if se_maternal <= 0 or se_paternal <= 0 or var_diff <= 0:
-        raise ValueError("Standard errors must be positive and the variance of the difference > 0.")
+    if var_diff <= 0:
+        raise ValueError("The variance of the difference must be > 0.")
 
     diff = beta_maternal - beta_paternal
     se_diff = math.sqrt(var_diff)
@@ -68,12 +91,15 @@ def compare_parental_effects(
         "ci_high": diff + q * se_diff,
         "alpha": alpha,
         "difference_significant": two_sided_p(z) < alpha,
-        "covariance_assumed": cov,
+        "covariance_used": cov,
     }
 
 
 def compare_value(claimed: float, source: float, tolerance: float = 0.0) -> dict:
     """Compare a claimed number with the source number."""
+    claimed, source = _finite("claimed", claimed), _finite("source", source)
+    if _finite("tolerance", tolerance) < 0:
+        raise ValueError("tolerance must be >= 0.")
     abs_diff = abs(claimed - source)
     return {
         "claimed": claimed,

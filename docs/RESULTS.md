@@ -1,6 +1,62 @@
 # Results
 
-## Run 3: version 2 test, pre-registered (26 new claims)
+## Corrections after external review (14 November 2026)
+
+The first public version (commit `6a79fb1`) was reviewed independently. The review reproduced every reported count from the saved traces, and found one error in a decision rule and several robustness gaps in the code ([CHANGELOG](CHANGELOG.md)).
+
+Everything in this section comes from re-scoring the saved outputs with `python scripts/score_saved_runs.py`. No model was run again.
+
+### 1. One Run 3 label was wrong (V05)
+
+V05 states that the paternal effect of rs12528876 on IGF-1 is larger in magnitude than the maternal effect.
+
+- Stored estimates: maternal +0.021, paternal −0.036, SE 0.009 each.
+- Published p-value of the maternal–paternal difference: 2.96×10⁻⁶.
+
+Rule H in rules v2 counted the claim as `supported`, because the difference is significant and the paternal estimate is larger in absolute value. That is wrong when the two estimates have opposite signs. The published test concerns β_m − β_p. Whether the magnitudes differ is then a question about β_m + β_p, and the records contain neither that test nor the covariance it needs. For illustration only: with zero covariance that contrast gives P ≈ 0.24.
+
+Under the corrected rules ([v2.1](../data/poe_published_v2_1/rules.md)) the verdict for V05 is `insufficient_evidence`.
+
+All four conditions answered `supported`, which is what the rule they were given required. The error was in the rule, not in the models, so V05 is excluded from the corrected scores.
+
+| Condition | As run (rules v2) | Corrected (v2.1, V05 excluded) | 95% CI, claims | 95% CI, variant clusters |
+| --- | --- | --- | --- | --- |
+| tools, system v1 | 20 / 26 | 19 / 25 (0.76) | 0.60–0.92 | 0.60–0.90 |
+| tools, system v2 | 22 / 26 | 21 / 25 (0.84) | 0.68–0.96 | 0.67–0.96 |
+| no tools, system v1 | 19 / 26 | 18 / 25 (0.72) | 0.52–0.88 | 0.54–0.88 |
+| no tools, system v2 | 24 / 26 | 23 / 25 (0.92) | 0.80–1.00 | 0.83–1.00 |
+
+The paired comparisons do not change, because all four conditions gave the same answer to V05: tools v1 vs v2, McNemar p = 0.63; no tools v1 vs v2, p = 0.13.
+
+### 2. No other label depends on this error
+
+Every claim whose rule compares the two magnitudes was checked for opposite-sign estimates.
+
+- **Run 3.** V05 is the only type H claim with opposite signs. V06 has same-sign estimates, where the difference test does compare magnitudes.
+- **Run 2.** Rules v1 used a magnitude comparison inside the parent-specific rules (types B and C). Three such claims involve opposite-sign estimates: R08, R29 and R31. Their labels are unchanged under the v2.1 rule, which uses significance only. R08 is `contradicted` because the other parent's effect is itself significant (P = 8.5×10⁻¹¹). R29 and R31 are `supported` because the named parent's effect is significant, the other parent's is not, and the difference is significant. A test checks this.
+
+### 3. Claims share source records
+
+The claims are not independent: the 32 Run 2 claims concern 14 variants, and the 26 Run 3 claims concern 15. The table above and the one below add a bootstrap that resamples variants instead of claims.
+
+| Run 2 condition | Correct | 95% CI, claims | 95% CI, variant clusters |
+| --- | --- | --- | --- |
+| tools | 26 / 32 | 0.69–0.94 | 0.67–0.94 |
+| no tools | 23 / 32 | 0.56–0.88 | 0.58–0.85 |
+
+The clustered intervals are close to the claim-level ones here. All intervals and McNemar tests in this document are exploratory: they describe this constructed claim set, not performance on new loci.
+
+### 4. The saved verdicts pass the new acceptance checks
+
+The agent loop now refuses a verdict unless evidence was looked up first and every cited record ID was returned by a tool (see [METHODS §2](METHODS.md)). Replaying the saved traces against these checks: 168 of 168 saved verdicts pass. The gap the review found was real, but no saved run went through it.
+
+### 5. What was not re-run
+
+Runs 2 and 3 were produced by the code at commit `6a79fb1`. The later fixes change what the tools return: for published records, the difference test no longer returns an SE, z or confidence interval recomputed from rounded estimates. The corrected code has not been evaluated with the model. Running it again on the same claims would be a further look at a claim set that has already shaped the design, so the next evaluation needs new claims on loci not used here.
+
+## Run 3: version 2 test (26 new claims)
+
+The scores in this section are as run, under rules v2. They include V05; see the correction above.
 
 **Run settings**
 
@@ -8,7 +64,7 @@
 - Model: gpt-4.1-mini, temperature 0
 - Domain: `poe_published_v2`, rules v2
 - Design: system v1 or v2, crossed with tools or no tools, on the same 26 claims
-- Analysis plan: [METHODS §7](METHODS.md), fixed before the run
+- Analysis plan: [METHODS §7](METHODS.md), written before the run (not registered externally)
 - Traces: `results/poe_published_v2_*_20261113-run3/`
 
 | Condition | Correct | Accuracy (95% CI) | Asserted errors* | Verdict–explanation mismatches† |
@@ -128,12 +184,12 @@ Every error was classified by reading its full trace.
 
 This analysis was defined after the run. Under a strict reading, a parent-specific claim is false when the other parent's effect is also significant. That changes the correct verdict of three claims, R10, R11 and R12, from `supported` to `contradicted`.
 
-| Condition | Pre-registered rules | Strict reading |
+| Condition | Rules as fixed before the run | Strict reading |
 | --- | --- | --- |
 | agent | 26 / 32 | 27 / 32 |
 | no_tools | 23 / 32 | 20 / 32 |
 
-The primary result is the pre-registered one.
+The primary result is the one under the rules fixed before the run.
 
 ### Limitations of this run
 
@@ -151,6 +207,7 @@ The fixes these failure modes suggest are listed in the [CHANGELOG](CHANGELOG.md
 - Model: gpt-4.1-mini, temperature 0
 - Rules: version 1 (before the claim-type restructuring; see [CHANGELOG](CHANGELOG.md))
 - Claims: 15 parent-of-origin and 8 energy, all in the `dev` split
+- Traces: not in the repository. This run is reported as development history only, and no conclusion rests on it.
 
 ### Accuracy
 

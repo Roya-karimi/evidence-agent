@@ -2,7 +2,7 @@
 
 An LLM agent that checks scientific and technical claims against source records, and an evaluation framework that measures how often it reaches the correct verdict, and why it fails when it does not.
 
-**Status:** the agent and evaluation pipeline work. A test benchmark of 32 claims against published parent-of-origin estimates (Hofmeister et al. 2025, *Nature*) has been run with and without tools, and its decision rules were fixed before the run. A synthetic development benchmark is also included. Version 2 targets the failure modes found in Run 2, and was evaluated on 26 new claims under a pre-registered plan (Run 3).
+**Status:** a working research prototype. A benchmark of 32 claims against published parent-of-origin estimates (Hofmeister et al. 2025, *Nature*) has been run with and without tools, under decision rules fixed before the run (Run 2). Version 2 targets the failure modes found there, and was evaluated on 26 further claims under a plan written before the run (Run 3). An external review of the first public version then found one wrong decision rule and several robustness gaps. These are corrected, with a regression test for each, and the saved runs are re-scored in [docs/RESULTS.md](docs/RESULTS.md).
 
 ## Motivation
 
@@ -26,10 +26,11 @@ Keeping `contradicted` and `insufficient_evidence` apart is central. A missing v
 | Domain | Records | Claims | Example trap |
 | --- | --- | --- | --- |
 | `poe_published` (test) | 30 published parent-of-origin effects: maternal and paternal β, SE and p in UK Biobank (Hofmeister et al. 2025, Table 1) | 32 | **Rounding.** Recomputing the difference test from the rounded Table 1 estimates gives P ≈ 3×10⁻⁸ for rs4264135 and urate, but the published value is 2.2×10⁻⁷. So a "genome-wide significant" claim is `insufficient_evidence`. |
-| `poe` (development) | Synthetic loci built to exercise each rule | 20 | A significant maternal and a non-significant paternal estimate do not show that the two effects differ. The difference must be tested directly, with the maternal–paternal covariance when available. |
+| `poe_published_v2_1` (test) | The same 30 records | 26 | **Magnitude.** Maternal +0.021 and paternal −0.036 differ significantly, but that does not show the paternal effect is larger in magnitude: with opposite signs, that is a different contrast. The claim is `insufficient_evidence`. |
+| `poe` (development) | Synthetic loci built to exercise each rule | 20 | A significant maternal and a non-significant paternal estimate do not show that the two effects differ. The difference must be tested directly, with the maternal–paternal covariance. |
 | `energy` (development) | Synthetic well records | 8 | 3,574 m is the measured depth and the vertical depth is missing, so a claim of 3,574 m vertical depth is `insufficient_evidence`, not `contradicted`. |
 
-Both domains use the same engine. A new domain needs a records file, a rules file, a labelled claim set and a few tools.
+`poe_published_v2` holds the same 26 claims with the rules and labels as run, before the correction. All domains use the same engine. A new domain needs a records file, a rules file, a labelled claim set and a few tools.
 
 ## How it works
 
@@ -39,9 +40,9 @@ claim ─▶ LLM ─(tool call)─▶ Python tool ─(result)─▶ LLM ─▶ �
 
 1. The model receives the decision rules, the claim and the tool definitions.
 2. It requests lookups and tests by tool call. Tools take **record IDs, not numbers**, so the model cannot alter an estimate.
-3. Python computes the statistics: Wald tests, the maternal–paternal difference test with covariance, unit conversion, and tolerance checks.
-4. The model ends with a structured `submit_verdict` call that lists the evidence it used.
-5. Every step is logged, so each verdict can be audited.
+3. Python checks every call against the tool's schema, then computes the statistics: Wald tests, the maternal–paternal difference test, unit conversion and tolerance checks. Published p-values are used where they exist, and a missing covariance is never assumed.
+4. The model ends with a structured `submit_verdict` call. It is accepted only if evidence was looked up first and every record it cites was returned by a tool.
+5. Every step is logged, so each verdict can be audited. A failed model call is recorded as an operational error, never as a verdict.
 
 Method details: [docs/METHODS.md](docs/METHODS.md).
 
@@ -74,30 +75,28 @@ The accuracy difference is not statistically detectable with 32 claims (paired e
 - **Without tools,** every error asserted something the records do not establish. Six verdicts contradicted the model's own explanation. Two p-values were misjudged against a threshold. In one case, evidence from a different variant was used.
 - **With tools,** there were no threshold or evidence-substitution errors. The main weakness was retrieval: trait names written differently in the claim and in the records ("type 2 diabetes" vs "T2D", "IGF-1" vs "IGF1"). One verdict was correct for the wrong reason.
 
-### Version 2 (26 new claims, pre-registered)
+### Version 2 (26 further claims, plan written before the run)
 
 Run 2 showed two failure modes. Version 2 targets each one: rsID-first search, and asking for the explanation before the verdict.
 
 | | system v1 | system v2 |
 | --- | --- | --- |
-| with tools | 20 / 26 | 22 / 26 |
-| without tools | 19 / 26 | **24 / 26** |
+| with tools | 20 / 26 (corrected: 19 / 25) | 22 / 26 (corrected: 21 / 25) |
+| without tools | 19 / 26 (corrected: 18 / 25) | **24 / 26** (corrected: 23 / 25) |
+
+"Corrected" leaves out one claim, V05. An external review showed that its decision rule used the wrong statistical contrast, so its label was wrong. All four conditions gave the same answer to it, so the comparisons below are unaffected.
 
 - **Search fix:** searches returning no records fell from 17 to 1, and records that existed but were never opened fell from 3 to 0. Accuracy on the five trait-synonym claims did not change (4 of 5 in both).
 - **Explanation first:** verdict–explanation mismatches fell from 3 to 0, and asserted errors from 7 to 2.
 - **Significance:** neither accuracy difference is statistically significant with 26 claims (McNemar p = 0.63 and 0.13).
 - **What remains:** threshold comparisons still fail without tools. Allele orientation and mechanism claims are the main open problems.
+- **Tools did not always win.** On these claims, the highest score came from the model without tools, once it was asked to explain before deciding.
 
 Details: [docs/RESULTS.md](docs/RESULTS.md).
 
-### Development benchmark (synthetic records, gpt-4.1-mini)
+### Development benchmark (synthetic records)
 
-| Domain | `agent` | `no_tools` |
-| --- | --- | --- |
-| Parent-of-origin (15 claims) | 14/15 (0.93; 95% CI 0.80–1.00) | 11/15 (0.73; 0.53–0.93) |
-| Energy (8 claims) | 8/8 | 7/8 |
-
-The tools corrected every baseline error that required a calculation: the difference test, the covariance-adjusted test, and the missing-value case. Without tools, the model's parent-of-origin errors all leaned towards `insufficient_evidence`. With 23 claims the paired difference is not statistically conclusive (exact McNemar p = 0.13). The agent's single error was traced to an ambiguous rule and fixed. That fix is now being checked on held-out claims.
+The synthetic domains were used to develop the rules and the pipeline. Their first run is described in [docs/RESULTS.md](docs/RESULTS.md) as development history; its traces are not in the repository, and no conclusion rests on it.
 
 Full results and error analysis: [docs/RESULTS.md](docs/RESULTS.md). Changes between runs: [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
@@ -122,22 +121,26 @@ python -m evidence_agent evaluate --domain poe --mode agent
 python -m evidence_agent evaluate --domain poe --mode no_tools
 python -m evidence_agent compare results/<agent_run> results/<no_tools_run>
 
-# version 2 (rsID-first search, explanation-first verdict) on the v2 claims
-python -m evidence_agent evaluate --domain poe_published_v2 --mode agent --system v2
+# version 2 (rsID-first search, explanation-first verdict) on the corrected v2.1 claims
+python -m evidence_agent evaluate --domain poe_published_v2_1 --mode agent --system v2
+
+# without an API key: re-score the saved runs, and check the gold labels against the rules
+python scripts/score_saved_runs.py
+python scripts/verify_gold.py poe_published_v2_1
 ```
 
-Each run writes `summary.md` (metrics) and `runs.jsonl` (full traces) to `results/`.
+Each run writes `summary.md` (metrics), `runs.jsonl` (full traces) and `manifest.json` (model, settings, and hashes of the rules, claims, records and code) to `results/`.
 
 ## Repository layout
 
 ```
 evidence_agent/
-  agent.py      tool-calling loop
-  tools.py      domain tools and the structured submit_verdict tool
+  agent.py      tool-calling loop and the acceptance checks for a verdict
+  tools.py      domain tools, argument validation, the structured submit_verdict tool
   stats.py      Wald test, maternal–paternal difference test, value comparison
   prompts.py    system prompts for the two conditions
   llm.py        OpenAI client, and a scripted model for offline tests
-  metrics.py    accuracy, bootstrap CI, confusion matrix, McNemar test
+  metrics.py    accuracy, bootstrap CI (by claim or by cluster), confusion matrix, McNemar test
   domains.py    domain registry
 data/<domain>/
   records.csv   source records
@@ -146,17 +149,21 @@ data/<domain>/
 scripts/
   build_poe_published.py   builds the published records from the extracted Table 1
   verify_gold.py           checks every gold verdict with a rule implementation
+  score_saved_runs.py      re-scores the saved runs without calling the model
 docs/           methods, results, changelog
 tests/          offline tests (scripted model; no API calls)
 ```
 
 ## Limitations
 
-- **Small benchmarks.** 32 published-data claims and 28 synthetic ones, so confidence intervals are wide. Rules and labels come from one author. The rule implementation checks consistency, not correctness, and independent labelling is planned.
-- **Summary estimates only.** The published records are from a single table, with rounded estimates and no maternal–paternal covariance.
+- **Small, constructed benchmarks.** 32 and 26 published-data claims, covering 14 and 15 variants. Claims share source records, and the Run 3 claims were written after seeing the Run 2 failures. Confidence intervals and tests are exploratory and describe these claim sets, not performance on new loci.
+- **Labels are not independently validated.** Rules and labels were drafted with AI assistance. The rule implementation checks that labels are consistent with the rules, not that the rules are right: the one rule error found so far (V05) was found by external review. Independent expert labelling has not been done.
+- **The corrected code has not been re-evaluated.** Runs 2 and 3 were made before the corrections of 14 November 2026. They were re-scored, not re-run. A new evaluation needs claims on loci not used here.
+- **Not externally registered.** Rules and analysis plans were written before each run, but not registered anywhere. The repository's history begins after Runs 2 and 3.
+- **Summary estimates only.** The published records are from a single table, with rounded estimates and no maternal–paternal covariance. Significance uses the published p-values, at the benchmark's own thresholds, not the paper's discovery thresholds.
+- **"Parent-specific" is a convention.** A significant effect in one parent and a non-significant one in the other, with a significant difference, counts as parent-specific. A non-significant estimate does not show that the other parent's effect is zero.
 - **Rules are given, not learnt.** The benchmark tests whether the model applies the rules correctly, not whether it can derive them.
-- **Zero covariance by default.** Without a stored covariance, the difference test assumes the maternal and paternal estimates are independent. That is not valid for estimates from the same trio model.
-- **Model dependence.** Results depend on the model version, and runs at temperature 0 are not guaranteed to be identical.
+- **Model dependence.** Results depend on the model version, one run was made per condition, and runs at temperature 0 are not guaranteed to be identical.
 
 ## Data source
 
@@ -166,7 +173,7 @@ The published records come from Hofmeister RJ, et al. "Parent-of-origin effects 
 
 Roya Karimi, University of Bergen.
 
-The author defined the research question, chose the data source (a publication she co-authored), ran all evaluations and signed off the final version. The decision rules, labelled claims, code and documentation were developed with AI assistance (Claude, ChatGPT Codex).
+The author defined the research question, chose the data source (a publication she co-authored) and ran all evaluations. The decision rules, labelled claims, code and documentation were developed with AI assistance (Claude, ChatGPT Codex). An AI-assisted review of the first public version found the rule error and the robustness gaps listed in the [changelog](docs/CHANGELOG.md).
 
 ## License
 

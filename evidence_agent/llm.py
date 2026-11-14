@@ -24,20 +24,27 @@ class LLMResponse:
     assistant_message: dict          # appended to the conversation as-is
     usage: dict = field(default_factory=dict)
     seconds: float = 0.0
+    model: str | None = None         # the model snapshot the API reports having used
+    response_id: str | None = None
 
 
 class OpenAIChat:
     """Chat Completions API with tool calling.
 
     Reads OPENAI_API_KEY and OPENAI_MODEL from the environment (or a .env file).
+    Each request has a time limit, a retry limit and an output-token limit, so one
+    claim cannot hang or grow without bound.
     """
 
-    def __init__(self, model: str | None = None, temperature: float = 0.0):
+    def __init__(self, model: str | None = None, temperature: float = 0.0,
+                 timeout_seconds: float = 60.0, max_retries: int = 2, max_output_tokens: int = 1000):
         from openai import OpenAI  # imported here so tests run without the package
 
-        self.client = OpenAI()
+        self.client = OpenAI(timeout=timeout_seconds, max_retries=max_retries)
         self.model = model or os.environ["OPENAI_MODEL"]
         self.temperature = temperature
+        self.settings = {"temperature": temperature, "timeout_seconds": timeout_seconds,
+                         "max_retries": max_retries, "max_output_tokens": max_output_tokens}
 
     def chat(self, messages: list, tools: list) -> LLMResponse:
         start = time.perf_counter()
@@ -47,11 +54,12 @@ class OpenAIChat:
             tools=tools,
             tool_choice="required",      # every turn must be a tool call
             temperature=self.temperature,
+            max_completion_tokens=self.settings["max_output_tokens"],
         )
         msg = resp.choices[0].message
         calls = []
         for tc in msg.tool_calls or []:
-            try:
+            try:        # may be any JSON value; the agent loop validates it before use
                 args = json.loads(tc.function.arguments or "{}")
             except json.JSONDecodeError:
                 args = {"_unparseable": tc.function.arguments}
@@ -70,11 +78,16 @@ class OpenAIChat:
             assistant_message=assistant_message,
             usage=usage,
             seconds=time.perf_counter() - start,
+            model=getattr(resp, "model", None),
+            response_id=getattr(resp, "id", None),
         )
 
 
 class ScriptedLLM:
-    """Plays back a list of planned turns. Each turn is a list of (tool_name, args)."""
+    """Plays back a list of planned turns. Each turn is a list of (tool_name, args).
+
+    A turn may also be an Exception, which is raised to simulate an API failure.
+    """
 
     def __init__(self, turns: list):
         self.turns = list(turns)
@@ -82,6 +95,8 @@ class ScriptedLLM:
 
     def chat(self, messages: list, tools: list) -> LLMResponse:
         planned = self.turns.pop(0) if self.turns else []
+        if isinstance(planned, Exception):
+            raise planned
         calls, raw = [], []
         for name, args in planned:
             self.n += 1

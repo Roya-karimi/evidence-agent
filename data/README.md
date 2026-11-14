@@ -13,11 +13,12 @@ Each domain folder holds:
 | Domain | Records | Status |
 | --- | --- | --- |
 | `poe_published` | 30 published estimates | Test benchmark (Run 2); rules fixed before any model run |
-| `poe_published_v2` | The same 30 records (read from `poe_published`) | 26 new test claims and rules v2, fixed before any v2 run |
+| `poe_published_v2` | The same 30 records (read from `poe_published`) | 26 test claims and rules v2, as given to the model in Run 3. Kept unchanged. |
+| `poe_published_v2_1` | The same 30 records | Corrected rules v2.1 and labels: magnitude claims with opposite-sign estimates are `insufficient_evidence`; V05 relabelled. Use this version for new runs. |
 | `poe` | Synthetic loci (`LOCUS_A` …) built to exercise each rule | Development benchmark |
 | `energy` | Synthetic wells (`WELL-T1` …) | Development benchmark |
 
-The synthetic records don't report any real estimate.
+The synthetic records don't report any real estimate. The synthetic parent-of-origin records state their maternal–paternal covariance explicitly (0, except `LOCUS_F`).
 
 ## `poe_published`: source and provenance
 
@@ -48,5 +49,5 @@ No text from the article is reproduced.
 
 **Known limits:**
 - β and SE are rounded to three decimals. The tools therefore use the published p-values for every significance decision.
-- The other allele and the maternal–paternal covariance are not reported. The difference test assumes zero covariance, as the paper does for summary-level replication.
+- The other allele and the maternal–paternal covariance are not reported. The tools therefore use the published p-value of the difference and return no SE or confidence interval for it.
 - **Verification:** the values were transcribed from the PMC version of Table 1. A second, independent reading used the article's own column order (paternal before maternal), so any swap of the parental columns would show up. All 240 values (30 rows × 8 values, including effect alleles) were identical.
